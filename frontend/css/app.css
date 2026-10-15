@@ -180,7 +180,6 @@ textarea.input { min-height: 84px; resize: vertical; line-height: 1.5; }
 .section-head p { color: var(--mute); font-size: 13px; }
 .panel { background: var(--canvas); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
 .panel-pad { padding: var(--s5); }
-.panel + .panel { margin-top: var(--s4); }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--s4); }
 .split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--s5); align-items: start; }
 .stack { display: grid; gap: var(--s4); }

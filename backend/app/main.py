@@ -53,6 +53,8 @@ async def keamanan(request: Request, call_next):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
     resp.headers.setdefault("X-Frame-Options", "DENY")
+    if config.COOKIE_SECURE:  # hanya di balik HTTPS (Render, Nginx)
+        resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     if not request.url.path.startswith("/api/docs"):
         resp.headers.setdefault("Content-Security-Policy", CSP)
     if request.url.path.startswith("/api/"):
