@@ -9,3 +9,6 @@ backups/
 .impeccable/
 *.log
 .pytest_cache/
+
+# dokumen internal, tidak dipublikasikan
+PRD SOLAR-EDU AI.docx
