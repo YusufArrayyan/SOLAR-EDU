@@ -154,6 +154,7 @@ class Pengguna(Base):
     aktif: Mapped[bool] = mapped_column(Boolean, default=True)
     email_mingguan: Mapped[bool] = mapped_column(Boolean, default=True)
     notif_aplikasi: Mapped[bool] = mapped_column(Boolean, default=True)
+    demo: Mapped[bool] = mapped_column(Boolean, default=False)  # akun uji publik; dibatasi terhadap akun asli
     dibuat_pada: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -104,3 +104,14 @@ def test_agregasi_per_jam_dalam_toleransi_05_persen():
             assert abs(mentah - a.beban_kw) <= 0.005 * max(mentah, 1e-6) + 1e-3
             diperiksa += 1
         assert diperiksa > 50
+
+
+def test_zona_waktu_tidak_menggeser_jam_lokal():
+    """Di Windows, TZ tidak boleh disetel ke nama IANA (runtime C akan menganggapnya UTC)."""
+    import os
+    import time
+    import app.config  # noqa: F401
+    if not hasattr(time, "tzset"):
+        assert os.environ.get("TZ") != "Asia/Jakarta"
+    else:
+        assert time.localtime().tm_gmtoff == 7 * 3600

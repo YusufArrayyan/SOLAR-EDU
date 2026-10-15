@@ -134,13 +134,15 @@ def impor_jadwal(data: ImporIn, user: Pengguna = Depends(require("pengaturan.uba
 # ------------------------------------------------------------------ pengguna (F23)
 def _u(p: Pengguna) -> dict:
     return {"id": p.id, "nama": p.nama, "email": p.email, "peran": p.peran, "peran_label": PERAN[p.peran],
-            "aktif": p.aktif, "dibuat_pada": p.dibuat_pada.isoformat()}
+            "aktif": p.aktif, "demo": p.demo, "dibuat_pada": p.dibuat_pada.isoformat()}
 
 
 @router.get("/pengguna")
 def daftar_pengguna(user: Pengguna = Depends(require("pengguna.kelola")), db: Session = Depends(get_db)):
-    return {"peran": PERAN, "baris": [_u(p) for p in db.scalars(select(Pengguna).order_by(Pengguna.peran,
-                                                                                           Pengguna.nama))]}
+    q = select(Pengguna).order_by(Pengguna.peran, Pengguna.nama)
+    if user.demo:
+        q = q.where(Pengguna.demo.is_(True))  # akun asli tidak terlihat dari akun demo
+    return {"peran": PERAN, "demo": user.demo, "baris": [_u(p) for p in db.scalars(q)]}
 
 
 class PenggunaIn(BaseModel):
@@ -160,6 +162,8 @@ class PenggunaUbah(BaseModel):
 @router.post("/pengguna", status_code=201)
 def tambah_pengguna(data: PenggunaIn, user: Pengguna = Depends(require("pengguna.kelola")),
                     db: Session = Depends(get_db)):
+    if user.demo:
+        raise HTTPException(403, "Akun demo tidak bisa menambah pengguna. Masuk dengan akun asli tim pengelola.")
     if data.peran not in PERAN:
         raise HTTPException(422, "Peran tidak dikenal.")
     if len(data.nama.strip()) < 2:
@@ -181,8 +185,10 @@ def tambah_pengguna(data: PenggunaIn, user: Pengguna = Depends(require("pengguna
 def ubah_pengguna(pid: str, data: PenggunaUbah, user: Pengguna = Depends(require("pengguna.kelola")),
                   db: Session = Depends(get_db)):
     p = db.get(Pengguna, pid)
-    if not p:
+    if not p or (user.demo and not p.demo):
         raise HTTPException(404, "Pengguna tidak ditemukan.")
+    if user.demo and data.sandi_baru is not None:
+        raise HTTPException(403, "Akun demo tidak bisa mereset kata sandi.")
     if p.id == user.id and (data.aktif is False or (data.peran and data.peran != "tim")):
         raise HTTPException(422, "Akun sendiri tidak bisa dinonaktifkan atau diturunkan perannya.")
     perubahan = []
@@ -237,6 +243,8 @@ class SandiIn(BaseModel):
 @router.put("/saya/sandi")
 def ganti_sandi(data: SandiIn, request: Request, user: Pengguna = Depends(current_user),
                 db: Session = Depends(get_db)):
+    if user.demo:
+        raise HTTPException(403, "Kata sandi akun demo tidak bisa diganti agar demo tetap bisa dipakai bersama.")
     if not cek_sandi(data.lama, user.hash_sandi):
         raise HTTPException(422, {"pesan": "Kata sandi lama salah.", "kolom": {"lama": "Kata sandi lama salah."}})
     if len(data.baru) < 10:
@@ -316,6 +324,9 @@ def log_audit(halaman: int = 1, aksi: str | None = None, user: Pengguna = Depend
               db: Session = Depends(get_db)):
     halaman = max(1, halaman)
     q = select(LogAudit)
+    if user.demo:
+        q = q.outerjoin(Pengguna, LogAudit.pengguna_id == Pengguna.id).where(
+            (LogAudit.pengguna_id.is_(None)) | (Pengguna.demo.is_(True)))
     if aksi:
         q = q.where(LogAudit.aksi.like(f"{aksi}%"))
     total = db.scalar(select(func.count()).select_from(q.subquery())) or 0

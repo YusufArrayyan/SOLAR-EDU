@@ -167,15 +167,15 @@ async function pengguna(box, { isCurrent }) {
     <div class="table-wrap"><table>
       <thead><tr><th scope="col">Nama</th><th scope="col">Peran</th><th scope="col">Status</th><th scope="col"><span class="sr">Aksi</span></th></tr></thead>
       <tbody>${d.baris.map((u) => html`<tr data-id="${u.id}">
-        <th scope="row">${u.nama}<span class="sub">${u.email}</span></th>
+        <th scope="row">${u.nama}<span class="sub">${u.email}${u.demo && !d.demo ? " · akun demo" : ""}</span></th>
         <td><label class="sr" for="peran-${u.id}">Peran ${u.nama}</label>
           <select class="input input-auto" id="peran-${u.id}" name="peran" autocomplete="off" ${raw(u.id === saya.id ? "disabled" : "")}>
             ${Object.entries(d.peran).map(([k, l]) => html`<option value="${k}" ${raw(k === u.peran ? "selected" : "")}>${l}</option>`)}</select></td>
         <td>${u.aktif ? html`<span class="chip chip-good">Aktif</span>` : html`<span class="chip chip-plain">Nonaktif</span>`}</td>
-        <td class="n">${u.id === saya.id ? html`<a class="btn btn-sm btn-ghost" href="#/akun">Akun ini</a>` : html`<div class="row row-end nowrap-row"><button class="btn btn-sm" type="button" data-reset>Reset kata sandi</button><button class="btn btn-sm ${u.aktif ? "btn-danger" : ""}" type="button" data-aktif="${u.aktif ? "0" : "1"}">${u.aktif ? "Nonaktifkan" : "Aktifkan"}</button></div>`}</td>
+        <td class="n">${u.id === saya.id ? html`<a class="btn btn-sm btn-ghost" href="#/akun">Akun ini</a>` : html`<div class="row row-end nowrap-row">${d.demo ? "" : html`<button class="btn btn-sm" type="button" data-reset>Reset kata sandi</button>`}<button class="btn btn-sm ${u.aktif ? "btn-danger" : ""}" type="button" data-aktif="${u.aktif ? "0" : "1"}">${u.aktif ? "Nonaktifkan" : "Aktifkan"}</button></div>`}</td>
       </tr>`)}</tbody>
     </table></div>
-    <section class="panel panel-pad section" aria-labelledby="h-tambah">
+    ${d.demo ? html`<section class="panel panel-pad section"><h2>Akun demo</h2><p class="body section-sm">Daftar ini hanya memuat akun demo. Untuk menambah pengguna atau mereset kata sandi, masuk dengan akun asli tim pengelola.</p></section>` : html`<section class="panel panel-pad section" aria-labelledby="h-tambah">
       <h2 id="h-tambah">Tambah pengguna</h2>
       <p class="muted">Sistem hanya menyimpan nama, email, dan peran. Minta pengguna mengganti kata sandi awal setelah masuk.</p>
       <form id="f-tambah" class="grid-form section-sm" novalidate>
@@ -185,7 +185,7 @@ async function pengguna(box, { isCurrent }) {
         <div class="field"><label for="u-sandi">Kata sandi awal</label><input class="input" id="u-sandi" name="sandi" type="password" autocomplete="new-password" minlength="10" required><span class="hint">Minimal 10 karakter.</span><span class="err" data-for="sandi" hidden></span></div>
         <div class="row row-end span-all"><button class="btn btn-primary" type="submit">Tambah pengguna</button></div>
       </form>
-    </section>`);
+    </section>`}`);
 
   box.querySelectorAll("tr[data-id]").forEach((tr) => {
     const id = tr.dataset.id;
@@ -235,8 +235,8 @@ async function pengguna(box, { isCurrent }) {
     });
   });
   const form = box.querySelector("#f-tambah");
-  form.addEventListener("input", () => setDirty(true));
-  form.addEventListener("submit", async (e) => {
+  form?.addEventListener("input", () => setDirty(true));
+  form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const body = Object.fromEntries(["nama", "email", "peran", "sandi"].map((k) => [k, form.elements[k].value.trim()]));
     const err = {};

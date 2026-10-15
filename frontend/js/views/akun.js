@@ -11,7 +11,10 @@ export default async function akun({ main, user }) {
         <label class="check"><input type="checkbox" name="email_mingguan" ${raw(user.email_mingguan ? "checked" : "")}><span><b>Email ringkasan mingguan</b><span class="sub muted">Anomali, tindakan, dan prediksi pekan depan. Dikirim Senin 07.00 WIB ke ${user.email}.</span></span></label>
       </form>
     </section>
-    <section class="panel panel-pad section" aria-labelledby="h-sandi">
+    ${user.demo ? html`<section class="panel panel-pad section" aria-labelledby="h-sandi">
+      <h2 id="h-sandi">Akun demo</h2>
+      <p class="body section-sm">Akun ini dipakai bersama untuk mencoba sistem dengan data simulasi, jadi kata sandinya tidak bisa diganti. Akun demo tidak bisa melihat atau mengubah akun asli.</p>
+    </section>` : html`<section class="panel panel-pad section" aria-labelledby="h-sandi">
       <h2 id="h-sandi">Ganti kata sandi</h2>
       <p class="muted">Sesi di perangkat lain akan diakhiri. Perangkat ini tetap masuk.</p>
       <form id="f-sandi" class="grid-form section-sm" novalidate>
@@ -21,7 +24,7 @@ export default async function akun({ main, user }) {
         <div class="field"><label for="s-ulang">Ulangi kata sandi baru</label><input class="input" id="s-ulang" name="ulang" type="password" autocomplete="new-password" required><span class="err" data-for="ulang" hidden></span></div>
         <div class="row row-end span-all"><button class="btn btn-primary" type="submit">Simpan kata sandi baru</button></div>
       </form>
-    </section>
+    </section>`}
     <section class="panel panel-pad section" aria-labelledby="h-privasi">
       <h2 id="h-privasi">Data yang disimpan</h2>
       <p class="body section-sm">Sistem hanya menyimpan nama, email, peran, dan log aksi untuk audit. Data energi bersifat agregat per gedung dan panel. Tidak ada kamera, pengenalan wajah, atau jejak lokasi orang.</p>
@@ -36,7 +39,7 @@ export default async function akun({ main, user }) {
     } catch (ex) { e.target.checked = !e.target.checked; toast(ex.message, "err"); }
   });
   const fs = main.querySelector("#f-sandi");
-  fs.addEventListener("submit", async (e) => {
+  fs?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const lama = fs.elements.lama.value, baru = fs.elements.baru.value, ulang = fs.elements.ulang.value;
     const err = {};

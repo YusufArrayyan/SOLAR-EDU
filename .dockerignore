@@ -1,0 +1,8 @@
+.git
+backend/data
+backups
+deploy/certs
+deploy/mosquitto
+**/__pycache__
+.env
+*.docx

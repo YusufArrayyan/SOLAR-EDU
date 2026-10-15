@@ -6,7 +6,7 @@ Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode 
 
 | Pemeriksaan | Hasil |
 |---|---|
-| Uji otomatis (`pytest`) | 29 dari 29 lulus |
+| Uji otomatis (`pytest`) | 31 dari 31 lulus |
 | Uji serangan dari luar (sesi, CSRF, IDOR, rate limit, traversal, header, injeksi CSV) | 27 dari 27 lulus |
 | Matriks hak akses di antarmuka, 5 peran × 7 layar | Cocok dengan PRD |
 | Kontras warna WCAG 2.2 AA, 18 pasangan token terang dan gelap | 18 dari 18 lulus (terendah 4,55:1) |
@@ -71,8 +71,18 @@ Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode 
 6. Sesi kedaluwarsa dibersihkan tiap jam. Dokumentasi API (`/api/docs`) ditutup di mode produksi.
 7. Reset kata sandi oleh tim memakai formulir dengan isian tersamar, bukan kotak `prompt()`.
 
+## Persiapan deploy Render
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Akun demo dan akun asli berdampingan | Akun demo tidak bisa melihat, mengubah, mereset, atau menonaktifkan akun asli dan tidak bisa menambah pengguna (`test_akun_demo_tidak_bisa_menyentuh_akun_asli`) |
+| Memori puncak saat pengisian data simulasi 150 hari | 317 MB, stabil 271 MB (paket Starter 512 MB). Sebelumnya 396 MB karena cache menyimpan setiap versi model; sekarang hanya model aktif. |
+| Disk | Sekitar 64 MB setelah pengisian awal |
+| Jam server | Sesuai WIB di Windows dan Linux (`test_zona_waktu_tidak_menggeser_jam_lokal`) |
+| Disk permanen milik root | `scripts/entrypoint.sh` mengatur kepemilikan, lalu menurunkan hak akses ke pengguna `solar` |
+
 ## Belum diuji di lingkungan ini
 
-- Docker Compose, PostgreSQL + TimescaleDB, Mosquitto, Nginx, dan skrip cadangan atau pemulihan, karena Docker Desktop tidak terpasang di komputer pengembang. Konfigurasi Compose lolos validasi sintaks. Uji pertama dilakukan dengan `sh scripts/pasang.sh` di server kampus.
+- Build image Docker dan deploy Render, Docker Compose, PostgreSQL + TimescaleDB, Mosquitto, Nginx, serta skrip cadangan dan pemulihan, karena Docker Desktop tidak terpasang di komputer pengembang. Konfigurasi Compose lolos validasi sintaks. Uji pertama dilakukan dengan `sh scripts/pasang.sh` di server kampus.
 - Pengiriman email SMTP dan prakiraan Open-Meteo sungguhan (`WEATHER_LIVE=1`).
 - Akurasi pada data nyata. Angka MAPE di atas berasal dari data simulasi dan harus dibuktikan pada Fase 1.

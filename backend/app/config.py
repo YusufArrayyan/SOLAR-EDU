@@ -17,8 +17,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{(DATA_DIR / 'solar_edu.db'
 
 TZ = ZoneInfo("Asia/Jakarta")  # WIB
 # Semua stempel waktu disimpan naif dalam WIB, jadi jam proses harus WIB juga (kontainer Docker bawaannya UTC).
-os.environ.setdefault("TZ", "Asia/Jakarta")
+# Hanya di POSIX: runtime C Windows tidak mengenal nama zona IANA dan akan menganggapnya UTC.
 if hasattr(time, "tzset"):
+    os.environ.setdefault("TZ", "Asia/Jakarta")
     time.tzset()
 
 SESSION_IDLE_MINUTES = int(os.getenv("SESSION_IDLE_MINUTES", "30"))

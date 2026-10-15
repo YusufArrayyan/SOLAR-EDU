@@ -68,7 +68,7 @@ async function boot() {
   $("shell").hidden = false;
   const u = state.user;
   $("user-nama").textContent = u.nama;
-  $("user-peran").textContent = u.peran_label;
+  $("user-peran").textContent = u.demo ? `${u.peran_label} · akun demo` : u.peran_label;
   $("user-avatar").textContent = f.inisial(u.nama);
   buildNav();
   startPolling();

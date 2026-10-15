@@ -31,7 +31,8 @@ class MasukIn(BaseModel):
 
 def profil(u: Pengguna) -> dict:
     return {"id": u.id, "nama": u.nama, "email": u.email, "peran": u.peran, "peran_label": PERAN[u.peran],
-            "izin": izin_peran(u.peran), "email_mingguan": u.email_mingguan, "notif_aplikasi": u.notif_aplikasi}
+            "izin": izin_peran(u.peran), "email_mingguan": u.email_mingguan, "notif_aplikasi": u.notif_aplikasi,
+            "demo": u.demo}
 
 
 @router.post("/masuk")

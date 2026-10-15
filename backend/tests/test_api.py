@@ -119,23 +119,51 @@ def test_dataset_tanpa_identitas(masuk):
 
 
 def test_ganti_sandi_dan_reset(client, masuk):
-    from conftest import SANDI
-    c = masuk("dimas.ta@solar-edu.test")
-    assert c.put("/api/saya/sandi", json={"lama": "salah", "baru": "SandiBaru#2026"}, headers=H).status_code == 422
-    assert c.put("/api/saya/sandi", json={"lama": SANDI, "baru": "pendek"}, headers=H).status_code == 422
-    assert c.put("/api/saya/sandi", json={"lama": SANDI, "baru": "SandiBaru#2026"}, headers=H).status_code == 200
-    assert c.get("/api/auth/saya").status_code == 200  # sesi perangkat ini tetap aktif
-    c.post("/api/auth/keluar", headers=H)
-    assert client.post("/api/auth/masuk", json={"email": "dimas.ta@solar-edu.test", "sandi": SANDI},
-                       headers=H).status_code == 401
-    t = masuk(AKUN["tim"])
-    pid = next(u["id"] for u in t.get("/api/pengguna").json()["baris"] if u["email"] == "dimas.ta@solar-edu.test")
-    assert t.patch(f"/api/pengguna/{pid}", json={"sandi_baru": "pendek"}, headers=H).status_code == 422
-    assert t.patch(f"/api/pengguna/{pid}", json={"sandi_baru": SANDI}, headers=H).status_code == 200
-    masuk("dimas.ta@solar-edu.test")
-    audit = masuk(AKUN["tim"]).get("/api/audit").json()["baris"]
+    from conftest import ADMIN_SANDI, SANDI
+    # akun demo tidak boleh mengganti kata sandinya sendiri
+    d = masuk("dimas.ta@solar-edu.test")
+    assert d.put("/api/saya/sandi", json={"lama": SANDI, "baru": "SandiBaru#2026"}, headers=H).status_code == 403
+    # akun asli boleh
+    client.post("/api/auth/keluar", headers=H)
+    assert client.post("/api/auth/masuk", json={"email": "admin.asli@unib.ac.id", "sandi": ADMIN_SANDI},
+                       headers=H).status_code == 200
+    assert client.put("/api/saya/sandi", json={"lama": "salah", "baru": "SandiBaru#2026"}, headers=H).status_code == 422
+    assert client.put("/api/saya/sandi", json={"lama": ADMIN_SANDI, "baru": "pendek"}, headers=H).status_code == 422
+    assert client.put("/api/saya/sandi", json={"lama": ADMIN_SANDI, "baru": "SandiBaru#2026"}, headers=H).status_code == 200
+    assert client.get("/api/auth/saya").json()["demo"] is False
+    # admin asli mereset kata sandi akun demo
+    pid = next(u["id"] for u in client.get("/api/pengguna").json()["baris"] if u["email"] == "dimas.ta@solar-edu.test")
+    assert client.patch(f"/api/pengguna/{pid}", json={"sandi_baru": "pendek"}, headers=H).status_code == 422
+    assert client.patch(f"/api/pengguna/{pid}", json={"sandi_baru": SANDI}, headers=H).status_code == 200
+    audit = client.get("/api/audit").json()["baris"]
     assert any(a["aksi"] == "sandi.ganti" for a in audit)
     assert not any(SANDI in a["detail"] or "SandiBaru" in a["detail"] for a in audit)
+    client.put("/api/saya/sandi", json={"lama": "SandiBaru#2026", "baru": ADMIN_SANDI}, headers=H)
+
+
+def test_akun_demo_tidak_bisa_menyentuh_akun_asli(client, masuk):
+    from conftest import ADMIN_SANDI
+    t = masuk(AKUN["tim"])  # akun demo tim pengelola
+    assert t.get("/api/auth/saya").json()["demo"] is True
+    daftar = t.get("/api/pengguna").json()["baris"]
+    assert all(u["demo"] for u in daftar) and not any(u["email"] == "admin.asli@unib.ac.id" for u in daftar)
+    client.post("/api/auth/keluar", headers=H)
+    client.post("/api/auth/masuk", json={"email": "admin.asli@unib.ac.id", "sandi": ADMIN_SANDI}, headers=H)
+    semua = client.get("/api/pengguna").json()["baris"]
+    admin_id = next(u["id"] for u in semua if u["email"] == "admin.asli@unib.ac.id")
+    assert any(u["demo"] for u in semua)  # akun asli melihat semua
+    t = masuk(AKUN["tim"])
+    assert t.patch(f"/api/pengguna/{admin_id}", json={"aktif": False}, headers=H).status_code == 404
+    assert t.patch(f"/api/pengguna/{admin_id}", json={"sandi_baru": "x" * 12}, headers=H).status_code == 404
+    assert t.post("/api/pengguna", json={"nama": "Penyusup", "email": "a@b.id", "peran": "tim", "sandi": "x" * 12},
+                  headers=H).status_code == 403
+    demo_lain = next(u["id"] for u in daftar if u["email"] == "dimas.ta@solar-edu.test")
+    assert t.patch(f"/api/pengguna/{demo_lain}", json={"sandi_baru": "x" * 12}, headers=H).status_code == 403
+    assert all(a["pengguna"] != "Admin tim pengelola" for a in t.get("/api/audit").json()["baris"])
+    # akun admin asli tetap bisa masuk
+    client.post("/api/auth/keluar", headers=H)
+    assert client.post("/api/auth/masuk", json={"email": "admin.asli@unib.ac.id", "sandi": ADMIN_SANDI},
+                       headers=H).status_code == 200
 
 
 def test_ubah_gedung(masuk):

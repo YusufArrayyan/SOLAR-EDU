@@ -49,3 +49,12 @@ def siapkan_timescale() -> bool:
     except Exception as e:  # noqa: BLE001 - PostgreSQL biasa tetap berjalan tanpa TimescaleDB
         logging.getLogger("solar").warning("TimescaleDB tidak tersedia, memakai tabel biasa: %s", e)
         return False
+
+
+def migrasi_ringan() -> None:
+    """Tambah kolom baru pada basis data lama (tanpa alat migrasi terpisah)."""
+    from sqlalchemy import inspect, text
+    kolom = {c["name"] for c in inspect(engine).get_columns("pengguna")}
+    if "demo" not in kolom:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE pengguna ADD COLUMN demo BOOLEAN NOT NULL DEFAULT FALSE"))

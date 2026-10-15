@@ -15,11 +15,14 @@ python backend/run.py
 
 Buka http://localhost:8080. Saat pertama kali dijalankan, sistem membangkitkan 150 hari data simulasi (sekitar 35 detik), melatih model, dan memutar ulang 60 hari masa pilot. Port bisa diganti lewat variabel `PORT`. Di Windows bisa juga klik ganda `scripts/jalankan.bat`.
 
-### Akun uji (hanya untuk pengembangan lokal)
+### Akun demo dan akun asli
 
-Semua akun memakai kata sandi yang sama, yaitu `DEMO_PASSWORD` di [backend/app/seed.py](backend/app/seed.py).
+Mode simulasi menyediakan dua jenis akun:
 
-| Peran | Email | Layar utama |
+- **Akun demo** (lima peran di tabel bawah) memakai data simulasi dan dipakai bersama. Kata sandinya diatur lewat `DEMO_PASSWORD` (bawaan di [backend/app/seed.py](backend/app/seed.py)) dan diisi otomatis saat peran dipilih di halaman Masuk. Akun demo tidak bisa melihat, mengubah, mereset, atau menonaktifkan akun asli, tidak bisa menambah pengguna, dan tidak bisa mengganti kata sandinya.
+- **Akun asli** dibuat dari variabel `ADMIN_EMAIL` dan `ADMIN_PASSWORD` (peran Tim pengelola). Admin ini bisa menambah akun asli lain di Pengaturan > Pengguna.
+
+| Peran | Email demo | Layar utama |
 |---|---|---|
 | Pengelola gedung | pengelola@solar-edu.test | Ringkasan, Rekomendasi |
 | Mahasiswa piket | bima.piket@solar-edu.test (juga nadia., sari.) | Tugas dan rekomendasi |
@@ -28,6 +31,17 @@ Semua akun memakai kata sandi yang sama, yaitu `DEMO_PASSWORD` di [backend/app/s
 | Mahasiswa dan dosen | mahasiswa@solar-edu.test | Pusat belajar |
 
 Untuk mengulang data simulasi dari awal, hapus folder `backend/data/` lalu jalankan lagi.
+
+## Deploy ke Render
+
+Repo ini menyertakan Blueprint [render.yaml](render.yaml): satu layanan web Docker di region Singapura, paket Starter, dan disk permanen 1 GB untuk basis data serta model.
+
+1. Di dashboard Render pilih **New > Blueprint**, lalu hubungkan repo GitHub ini.
+2. Isi `ADMIN_EMAIL` dan `ADMIN_PASSWORD` (minimal 10 karakter) saat diminta. `INGEST_TOKEN` dibuat otomatis oleh Render.
+3. Tekan **Apply**. Deploy pertama membangun image lalu mengisi data simulasi 150 hari (beberapa menit di CPU kecil). Setelah itu aplikasi tersedia di `https://solar-edu.onrender.com` atau nama serupa.
+4. Masuk dengan akun asli, lalu ganti kata sandi di halaman Akun.
+
+Paket Free Render tidak mendukung disk permanen dan mematikan layanan saat tidak aktif, sehingga data simulasi dibangkitkan ulang setiap kali layanan bangun. Untuk produksi dengan data meter nyata, gunakan pemasangan di server kampus di bawah.
 
 ## Pemetaan modul PRD
 

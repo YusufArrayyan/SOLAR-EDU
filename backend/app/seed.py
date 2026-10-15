@@ -9,10 +9,11 @@ Akun uji (khusus pengembangan lokal). Semua memakai kata sandi DEMO_PASSWORD di 
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date, datetime, timedelta
 
 import numpy as np
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from . import config, settings_store
@@ -24,7 +25,7 @@ from .services import data_pipeline, forecast, impact, jobs, recommend, sim_stat
 
 log = logging.getLogger("solar.seed")
 
-DEMO_PASSWORD = "SolarEdu#2026"
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "SolarEdu#2026")  # akun demo publik, bukan akun asli
 
 PENGGUNA = [
     ("Rudi Hartono", "pengelola@solar-edu.test", "pengelola"),
@@ -94,7 +95,7 @@ def buat_struktur(db: Session, pengguna_demo: bool = True) -> tuple[Gedung, Gedu
         db.add(JadwalKuliah(ruang_id=ruang[j["ruang"]].id, hari=j["hari"], mulai=j["mulai"], selesai=j["selesai"],
                             mata_kuliah=j["mata_kuliah"]))
     for nama, email, peran in (PENGGUNA if pengguna_demo else []):
-        db.add(Pengguna(nama=nama, email=email, peran=peran, hash_sandi=hash_sandi(DEMO_PASSWORD),
+        db.add(Pengguna(nama=nama, email=email, peran=peran, hash_sandi=hash_sandi(DEMO_PASSWORD), demo=True,
                         dibuat_pada=datetime.now() - timedelta(days=150)))
     db.flush()
     return pilot, banding
@@ -130,8 +131,11 @@ def seed(days: int | None = None) -> None:
         db.commit()
 
         # ---- baseline 90 hari (Fase 1), tanpa rekomendasi
-        jobs.simulasikan(db, mulai, pilot_mulai)
-        db.commit()
+        t = mulai
+        while t < pilot_mulai:  # per pekan agar memori tetap kecil
+            jobs.simulasikan(db, t, min(t + timedelta(days=7), pilot_mulai))
+            db.commit()
+            t += timedelta(days=7)
         forecast.latih(db, pilot, pilot_mulai, "Model awal dari baseline Fase 1.")
         db.commit()
 
@@ -232,21 +236,37 @@ def _jalankan(db: Session, aksi: str, rid: str, waktu: datetime) -> None:
         log.warning("Aksi %s R-%s dilewati: %s", aksi, rec.nomor, e)
 
 
+def pastikan_admin(wajib: bool = False) -> None:
+    """Buat akun admin asli (peran tim pengelola) dari ADMIN_EMAIL dan ADMIN_PASSWORD bila belum ada.
+
+    Dipakai di kedua mode: di mode demo, akun ini berdampingan dengan akun demo tetapi tidak bisa
+    disentuh atau dilihat oleh akun demo.
+    """
+    email, sandi = os.getenv("ADMIN_EMAIL", "").strip().lower(), os.getenv("ADMIN_PASSWORD", "")
+    if not email or not sandi:
+        if wajib:
+            raise RuntimeError("Isi ADMIN_EMAIL dan ADMIN_PASSWORD (minimal 10 karakter) untuk pemasangan pertama.")
+        return
+    if len(sandi) < 10:
+        raise RuntimeError("ADMIN_PASSWORD minimal 10 karakter.")
+    with SessionLocal() as db:
+        if db.scalar(select(Pengguna.id).where(func.lower(Pengguna.email) == email)):
+            return  # sudah ada; kata sandi tidak ditimpa agar perubahan dari halaman Akun tetap berlaku
+        nama = os.getenv("ADMIN_NAMA", "Admin tim pengelola").strip() or "Admin tim pengelola"
+        db.add(Pengguna(nama=nama, email=email, peran="tim", hash_sandi=hash_sandi(sandi), demo=False))
+        audit(db, None, "pengguna.admin_awal", "Akun admin asli dibuat dari variabel lingkungan.")
+        db.commit()
+
+
 def siapkan_produksi() -> None:
-    """Mode produksi: buat struktur gedung, perangkat, jadwal awal, dan satu akun tim pengelola dari
-    ADMIN_EMAIL dan ADMIN_PASSWORD. Data energi masuk lewat MQTT."""
-    import os
+    """Mode produksi: struktur gedung, perangkat, jadwal awal, dan akun admin asli. Data energi lewat MQTT."""
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        if db.scalar(select(Gedung.id).limit(1)):
-            return
-        email, sandi = os.getenv("ADMIN_EMAIL"), os.getenv("ADMIN_PASSWORD")
-        if not email or not sandi or len(sandi) < 10:
-            raise RuntimeError("Isi ADMIN_EMAIL dan ADMIN_PASSWORD (minimal 10 karakter) untuk pemasangan pertama.")
-        buat_struktur(db, pengguna_demo=False)
-        db.add(Pengguna(nama="Admin tim pengelola", email=email.lower(), peran="tim", hash_sandi=hash_sandi(sandi)))
-        audit(db, None, "sistem.pasang", "Pemasangan awal mode produksi.")
-        db.commit()
+        if not db.scalar(select(Gedung.id).limit(1)):
+            buat_struktur(db, pengguna_demo=False)
+            audit(db, None, "sistem.pasang", "Pemasangan awal mode produksi.")
+            db.commit()
+    pastikan_admin(wajib=True)
 
 
 if __name__ == "__main__":

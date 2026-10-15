@@ -8,6 +8,8 @@ import pytest
 _tmp = tempfile.mkdtemp(prefix="solar-test-")
 os.environ["SOLAR_DATA_DIR"] = _tmp
 os.environ["SOLAR_SEED_DAYS"] = "110"
+os.environ["ADMIN_EMAIL"] = "admin.asli@unib.ac.id"
+os.environ["ADMIN_PASSWORD"] = ADMIN_SANDI = "Asli-Uji-12345"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 SANDI = "SolarEdu#2026"  # sama dengan DEMO_PASSWORD di app/seed.py

@@ -1,6 +1,7 @@
 """M3 mesin prediksi: Random Forest untuk beban gedung, model fisik sederhana untuk produksi PV."""
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -29,8 +30,12 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 _cache: dict[str, RandomForestRegressor] = {}
 
 
+# Jumlah thread pelatihan dibatasi agar muat di server kecil (mis. 512 MB); atur lewat SOLAR_JOBS.
+N_JOBS = int(os.getenv("SOLAR_JOBS", str(min(4, os.cpu_count() or 1))))
+
+
 def _rf(seed: int = 42) -> RandomForestRegressor:
-    return RandomForestRegressor(n_estimators=300, min_samples_leaf=3, oob_score=True, n_jobs=-1,
+    return RandomForestRegressor(n_estimators=300, min_samples_leaf=3, oob_score=True, n_jobs=N_JOBS,
                                  random_state=seed)
 
 
@@ -122,6 +127,7 @@ def latih(db: Session, gedung: Gedung, sekarang: datetime | None = None, catatan
             lama.aktif = False
         versi.aktif = True
         versi.catatan = (catatan + " Dipakai sebagai model aktif.").strip()
+        _cache.clear()  # hanya model aktif yang disimpan di memori
         _cache[versi.id] = model
     else:
         versi.catatan = (catatan + f" Tidak dipakai: MAPE {versi.mape:.1f} % lebih buruk dari 110 % model aktif "
@@ -150,6 +156,7 @@ def model_aktif(db: Session) -> tuple[VersiModel, RandomForestRegressor] | None:
         p = MODEL_DIR / v.berkas
         if not p.exists():
             return None
+        _cache.clear()
         _cache[v.id] = joblib.load(p)
     return v, _cache[v.id]
 

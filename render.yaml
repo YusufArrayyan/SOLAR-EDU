@@ -1,0 +1,31 @@
+# Blueprint Render: Dashboard Render > New > Blueprint > pilih repo ini.
+# Satu layanan web (Docker) dengan disk permanen untuk SQLite dan berkas model.
+services:
+  - type: web
+    name: solar-edu
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: starter            # disk permanen butuh paket berbayar; paket free tidak mendukung disk
+    region: singapore
+    healthCheckPath: /api/sehat
+    autoDeploy: true
+    disk:
+      name: solar-data
+      mountPath: /srv/backend/data
+      sizeGB: 1
+    envVars:
+      - key: SOLAR_SIMULATION   # 1 = data simulasi + akun demo, ditambah akun admin asli di bawah
+        value: "1"
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: ADMIN_EMAIL        # akun asli tim pengelola, diisi saat membuat Blueprint
+        sync: false
+      - key: ADMIN_PASSWORD     # minimal 10 karakter; ganti lagi di halaman Akun setelah masuk
+        sync: false
+      - key: ADMIN_NAMA
+        value: Admin tim pengelola
+      - key: INGEST_TOKEN
+        generateValue: true
+      - key: WEATHER_LIVE       # prakiraan cuaca nyata Open-Meteo; 0 = prakiraan simulasi
+        value: "0"

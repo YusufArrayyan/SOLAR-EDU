@@ -11,8 +11,8 @@ const DEMO = [
 
 export async function renderLogin(box, pesan, onMasuk) {
   document.title = "Masuk · SOLAR-EDU AI";
-  let simulasi = false;
-  try { simulasi = (await (await fetch("/api/sehat")).json()).simulasi; } catch { /* abaikan */ }
+  let simulasi = false, demoSandi = "";
+  try { const s = await (await fetch("/api/sehat")).json(); simulasi = s.simulasi; demoSandi = s.demo_sandi || ""; } catch { /* abaikan */ }
   render(box, html`
     <section class="masuk-art" aria-hidden="false">
       <div>
@@ -43,8 +43,8 @@ export async function renderLogin(box, pesan, onMasuk) {
         </div>
         <button class="btn btn-primary btn-block" type="submit">Masuk</button>
         ${simulasi ? html`<div class="demo">
-          <b>Akun uji prototipe</b>
-          <p class="muted">Pilih peran untuk mengisi email. Kata sandi uji tercatat di README dan berkas seed.</p>
+          <b>Coba sebagai akun demo</b>
+          <p class="muted">Pilih peran untuk mengisi email dan kata sandi demo. Akun demo memakai data simulasi dan dipakai bersama; akun asli dibuat oleh tim pengelola.</p>
           <ul>${DEMO.map(([p, e]) => html`<li><button type="button" data-email="${e}"><span>${p}</span><span>${e}</span></button></li>`)}</ul>
         </div>` : ""}
       </form>
@@ -53,7 +53,8 @@ export async function renderLogin(box, pesan, onMasuk) {
   const err = box.querySelector("#masuk-err");
   box.querySelectorAll("[data-email]").forEach((b) => b.addEventListener("click", () => {
     form.elements.email.value = b.dataset.email;
-    form.elements.sandi.focus();
+    if (demoSandi) { form.elements.sandi.value = demoSandi; form.querySelector('button[type="submit"]').focus(); }
+    else form.elements.sandi.focus();
   }));
   if (matchMedia("(pointer: fine)").matches) form.elements.email.focus();
   form.addEventListener("submit", async (e) => {

@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
-from .db import Base, engine, siapkan_timescale
+from .db import Base, engine, migrasi_ringan, siapkan_timescale
 from .routers import admin, auth, core, report
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -19,9 +19,14 @@ log = logging.getLogger("solar")
 async def lifespan(app: FastAPI):
     config.periksa_produksi()
     Base.metadata.create_all(engine)
+    migrasi_ringan()
     siapkan_timescale()
-    from .seed import seed, siapkan_produksi
-    seed() if config.SIMULATION else siapkan_produksi()
+    from .seed import pastikan_admin, seed, siapkan_produksi
+    if config.SIMULATION:
+        seed()
+        pastikan_admin()
+    else:
+        siapkan_produksi()
     from .services.jobs import Worker
     worker = Worker()
     worker.start()
@@ -77,7 +82,11 @@ def sehat():
     from .services.jobs import STATUS
     with SessionLocal() as db:
         g = db.scalar(select(Gedung.nama).where(Gedung.peran == "percontohan"))
-    return {"status": "ok", "versi": config.VERSI, "simulasi": config.SIMULATION, "gedung": g, "pekerja": STATUS}
+    hasil = {"status": "ok", "versi": config.VERSI, "simulasi": config.SIMULATION, "gedung": g, "pekerja": STATUS}
+    if config.SIMULATION:
+        from .seed import DEMO_PASSWORD
+        hasil["demo_sandi"] = DEMO_PASSWORD  # akun demo memang publik; akun asli tidak terpengaruh
+    return hasil
 
 
 app.mount("/assets", StaticFiles(directory=config.FRONTEND_DIR / "assets"), name="assets")
