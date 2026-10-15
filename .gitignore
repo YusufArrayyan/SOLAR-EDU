@@ -1,0 +1,11 @@
+backend/data/
+__pycache__/
+*.pyc
+.env
+deploy/certs/
+deploy/mosquitto/
+backups/
+.claude/
+.impeccable/
+*.log
+.pytest_cache/

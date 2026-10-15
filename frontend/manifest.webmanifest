@@ -1,0 +1,13 @@
+{
+  "name": "SOLAR-EDU AI",
+  "short_name": "SOLAR-EDU",
+  "lang": "id",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#fafafa",
+  "icons": [
+    { "src": "/assets/logo-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "/assets/logo-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

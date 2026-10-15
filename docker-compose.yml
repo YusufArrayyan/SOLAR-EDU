@@ -1,0 +1,88 @@
+# SOLAR-EDU AI: satu server kampus, satu perintah: docker compose up -d
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: solar_edu
+      POSTGRES_USER: solar
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solar -d solar_edu"]
+      interval: 10s
+    restart: unless-stopped
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    volumes: [./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro, ./deploy/mosquitto:/mosquitto/data]
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    ports: ["8883:8883"]       # gateway gedung terhubung lewat TLS
+    restart: unless-stopped
+
+  app:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql+psycopg://solar:${DB_PASSWORD}@db:5432/solar_edu
+      HOST: 0.0.0.0
+      PORT: "8080"
+      COOKIE_SECURE: "1"
+      SOLAR_SIMULATION: ${SOLAR_SIMULATION:-0}
+      WEATHER_LIVE: ${WEATHER_LIVE:-1}
+      INGEST_TOKEN: ${INGEST_TOKEN:?isi INGEST_TOKEN di .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SOLAR_DATA_DIR: /srv/backend/data
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes: [modeldata:/srv/backend/data]
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+
+  bridge:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: ["python", "scripts/mqtt_bridge.py"]
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+      MQTT_USER: ${MQTT_USER:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      API_URL: http://app:8080/api/ingest
+      INGEST_TOKEN: ${INGEST_TOKEN}
+    depends_on: [app, mqtt]
+    restart: unless-stopped
+
+  backup:
+    # Cadangan harian 02.30 WIB, terenkripsi AES-256, disimpan 30 hari di ./backups
+    # (pasang ./backups ke penyimpanan terpisah dari server, mis. NAS kampus).
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?isi BACKUP_PASSPHRASE di .env}
+      TZ: Asia/Jakarta
+    volumes: [./backups:/backups]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache openssl tzdata >/dev/null
+        while true; do
+          sekarang=$$(date +%H%M)
+          if [ "$$sekarang" = "0230" ]; then
+            f=/backups/solar-$$(date +%Y%m%d-%H%M).sql.gz.enc
+            pg_dump -h db -U solar -d solar_edu | gzip | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_PASSPHRASE -out "$$f" && echo "cadangan $$f"
+            find /backups -name 'solar-*.enc' -mtime +30 -delete
+            sleep 60
+          fi
+          sleep 30
+        done
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes: [./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro, ./deploy/certs:/etc/nginx/certs:ro]
+    ports: ["80:80", "443:443"]
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes: { dbdata: {}, modeldata: {} }

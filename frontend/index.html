@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id" translate="yes">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SOLAR-EDU AI</title>
+  <meta name="description" content="Pemantauan, prediksi, dan rekomendasi hemat energi gedung kampus dengan verifikasi manusia.">
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/logo-64.png" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#konten">Lewati ke konten</a>
+
+  <div id="masuk" class="masuk" hidden></div>
+
+  <div id="shell" class="shell" hidden>
+    <aside class="nav" id="nav" aria-label="Navigasi utama">
+      <div class="nav-head">
+        <a class="brand" href="#/" translate="no">
+          <img src="/assets/logo-64.png" width="32" height="32" alt="" fetchpriority="high">
+          <span>SOLAR-EDU <b>AI</b></span>
+        </a>
+        <button class="icon-btn nav-close" type="button" id="nav-tutup" aria-label="Tutup menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <nav>
+        <ul id="nav-list" class="nav-list"></ul>
+      </nav>
+      <div class="nav-foot">
+        <a class="user" href="#/akun" id="user-link">
+          <span class="avatar" id="user-avatar" aria-hidden="true"></span>
+          <span class="user-meta"><span id="user-nama"></span><small id="user-peran"></small></span>
+        </a>
+        <button class="btn btn-ghost btn-block" type="button" id="keluar">Keluar</button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <div class="main-col">
+      <header class="topbar">
+        <button class="icon-btn nav-open" type="button" id="nav-buka" aria-label="Buka menu" aria-controls="nav" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="topbar-title">
+          <span class="crumb" id="gedung-nama">Gedung percontohan</span>
+        </div>
+        <span class="badge badge-sim" id="badge-sim" title="Angka berasal dari data simulasi, bukan hasil pengukuran">Data simulasi</span>
+        <div class="topbar-actions">
+          <button class="icon-btn" type="button" id="tema" aria-label="Tema gelap" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          </button>
+          <div class="notif-wrap">
+            <button class="icon-btn" type="button" id="notif-btn" aria-label="Notifikasi" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+              <span class="dot-count" id="notif-count" hidden></span>
+            </button>
+            <div class="popover" id="notif-panel" hidden>
+              <div class="popover-head">
+                <h2>Notifikasi</h2>
+                <button class="btn btn-ghost btn-sm" type="button" id="notif-baca">Tandai semua dibaca</button>
+              </div>
+              <ul class="notif-list" id="notif-list"></ul>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main id="konten" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">SOLAR-EDU AI memerlukan JavaScript. Aktifkan JavaScript di peramban, lalu muat ulang.</p></noscript>
+</body>
+</html>
