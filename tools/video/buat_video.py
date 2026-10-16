@@ -109,15 +109,38 @@ def kunci_elevenlabs() -> str:
     return k
 
 
-def pilih_suara(c: httpx.Client) -> str:
+def daftar_suara(c: httpx.Client) -> list[str]:
+    """Urutan suara yang dicoba: pilihan manual, suara berlabel Indonesia, lalu suara bawaan edukatif.
+
+    Paket gratis ElevenLabs tidak boleh memakai suara Voice Library lewat API, jadi suara bawaan selalu
+    disertakan sebagai cadangan.
+    """
     if os.environ.get("ELEVENLABS_VOICE_ID"):
-        return os.environ["ELEVENLABS_VOICE_ID"]
+        return [os.environ["ELEVENLABS_VOICE_ID"]]
     suara = c.get("https://api.elevenlabs.io/v1/voices").raise_for_status().json()["voices"]
-    for v in suara:  # utamakan suara berlabel bahasa Indonesia
-        label = json.dumps(v.get("labels", {})).lower() + v.get("name", "").lower()
-        if "indonesia" in label or '"id"' in label:
-            return v["voice_id"]
-    return suara[0]["voice_id"]
+    indonesia = [v["voice_id"] for v in suara
+                 if "indonesia" in (json.dumps(v.get("labels", {})) + v.get("name", "")).lower()]
+    bawaan = [v for v in suara if v.get("category") == "premade"]
+    edukatif = [v["voice_id"] for v in bawaan
+                if "educational" in json.dumps(v.get("labels", {})).lower() and v["name"].startswith(("Matilda", "Alice"))]
+    lain = [v["voice_id"] for v in bawaan if "educational" in json.dumps(v.get("labels", {})).lower()]
+    urut = []
+    for v in indonesia + edukatif + lain + [x["voice_id"] for x in bawaan]:
+        if v not in urut:
+            urut.append(v)
+    return urut
+
+
+def tts(c: httpx.Client, suara: str, model: str, teks: str) -> httpx.Response:
+    body = {"text": teks, "model_id": model, "language_code": "id",
+            "voice_settings": {"stability": 0.55, "similarity_boost": 0.75, "style": 0.1}}
+    r = c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{suara}", params={"output_format": "mp3_44100_128"},
+               json=body)
+    if r.status_code == 400 and "language_code" in r.text:  # model lama tidak menerima language_code
+        body.pop("language_code")
+        r = c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{suara}",
+                   params={"output_format": "mp3_44100_128"}, json=body)
+    return r
 
 
 def buat_narasi(kerja: Path) -> dict[str, Path]:
@@ -128,21 +151,24 @@ def buat_narasi(kerja: Path) -> dict[str, Path]:
     model = os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
     hasil = {}
     with httpx.Client(headers={"xi-api-key": kunci}, timeout=120) as c:
-        suara = pilih_suara(c)
-        print(f"Narasi ElevenLabs: suara {suara}, model {model}")
-        for kode, teks in NARASI:
-            f = kerja / f"{kode}.mp3"
-            r = c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{suara}",
-                       params={"output_format": "mp3_44100_128"},
-                       json={"text": teks, "model_id": model, "language_code": "id",
-                             "voice_settings": {"stability": 0.55, "similarity_boost": 0.75, "style": 0.1}})
-            if r.status_code == 400 and "language_code" in r.text:  # model lama tidak menerima language_code
-                r = c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{suara}",
-                           params={"output_format": "mp3_44100_128"},
-                           json={"text": teks, "model_id": model,
-                                 "voice_settings": {"stability": 0.55, "similarity_boost": 0.75}})
-            if r.status_code != 200:
+        calon = daftar_suara(c)
+        suara = None
+        for v in calon:  # cari suara pertama yang diizinkan paket akun
+            r = tts(c, v, model, NARASI[0][1])
+            if r.status_code == 200:
+                suara = v
+                break
+            if r.status_code not in (401, 402, 403, 404):
                 raise SystemExit(f"ElevenLabs menolak permintaan ({r.status_code}): {r.text[:300]}")
+        if suara is None:
+            raise SystemExit("Tidak ada suara ElevenLabs yang diizinkan untuk paket akun ini.")
+        print(f"Narasi ElevenLabs: suara {suara}, model {model}")
+        for i, (kode, teks) in enumerate(NARASI):
+            f = kerja / f"{kode}.mp3"
+            if i > 0:
+                r = tts(c, suara, model, teks)
+                if r.status_code != 200:
+                    raise SystemExit(f"ElevenLabs menolak permintaan ({r.status_code}): {r.text[:300]}")
             f.write_bytes(r.content)
             hasil[kode] = f
             print(f"  {kode}: {durasi_media(f):.1f} s")
@@ -393,7 +419,7 @@ def susun(video: Path, mulai: dict[str, float], audio: dict[str, Path] | None, k
     filt.append("".join(f"[a{i}]" for i in range(1, len(NARASI) + 1))
                 + f"amix=inputs={len(NARASI)}:normalize=0,apad,atrim=0:{total:.2f},loudnorm=I=-16:TP=-1.5[aout]")
     args += ["-filter_complex", ";".join(filt), "-map", "0:v", "-map", "[aout]", "-c:v", "libx264", "-preset", "slow",
-             "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
+             "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-b:a", "128k", "-movflags", "+faststart",
              "-shortest", str(keluar)]
     subprocess.run(args, check=True, capture_output=True)
 

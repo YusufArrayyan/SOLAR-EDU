@@ -82,7 +82,7 @@ Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode 
 | Cuaca cadangan | Persistensi jam yang sama kemarin; tidak ada cuaca rekaan di produksi |
 | Keadaan kosong | Angka tanpa data tampil "–", grafik kosong diganti keterangan, label "Data simulasi" hanya muncul di mode simulasi |
 | Code review (10 temuan) | Semua diperbaiki, antara lain render.yaml masih mode simulasi, hypertable hilang setelah reset, batas fisik perangkat terbulatkan saat diubah, dan galat daftar persiapan menggagalkan Ringkasan |
-| Video panduan | Rekaman alur nyata 2,5 menit dengan teks keterangan VTT di menu Panduan |
+| Video panduan | Rekaman alur nyata 2 menit 35 detik, narasi ElevenLabs berbahasa Indonesia (suara bawaan Alice, model multilingual v2), teks keterangan VTT, audio AAC 48 kHz, bisa di-seek (HTTP 206) |
 
 ## Persiapan deploy Render
 
