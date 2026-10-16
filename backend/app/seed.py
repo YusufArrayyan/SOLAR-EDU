@@ -67,13 +67,20 @@ def _habit(db: Session, rec: Rekomendasi) -> str | None:
     return cocok[-1].kode if cocok else None
 
 
-def buat_struktur(db: Session, pengguna_demo: bool = True) -> tuple[Gedung, Gedung]:
+def buat_struktur(db: Session, pengguna_demo: bool = True, produksi: bool = False) -> tuple[Gedung, Gedung]:
+    """Gedung percontohan, gedung pembanding, perangkat, dan ruang awal.
+
+    Produksi: hanya dua gedung (data bisa diubah di Pengaturan); tanpa perangkat, ruang, jadwal, gedung lain,
+    maupun akun rekaan.
+    """
     pilot = Gedung(nama="Gedung A Fakultas Teknik", fungsi="kuliah", luas_m2=3200, jam_operasional_pekan=60,
                    kapasitas_pv_kwp=30, peran="percontohan")
     banding = Gedung(nama="Gedung V FKIP (pembanding)", fungsi="kuliah", luas_m2=3000, jam_operasional_pekan=60,
                      kapasitas_pv_kwp=0, peran="pembanding")
     db.add_all([pilot, banding])
     db.flush()
+    if produksi:
+        return pilot, banding  # perangkat dan ruang nyata didaftarkan tim pengelola di Pengaturan > Gedung
     nama_panel = {"fk-a/panel-l1": "Panel lantai 1", "fk-a/panel-l2": "Panel lantai 2",
                   "fk-a/panel-l3": "Panel lantai 3", "fk-a/panel-lab": "Panel laboratorium"}
     for kode, nama in nama_panel.items():
@@ -258,13 +265,37 @@ def pastikan_admin(wajib: bool = False) -> None:
         db.commit()
 
 
-def siapkan_produksi() -> None:
-    """Mode produksi: struktur gedung, perangkat, jadwal awal, dan akun admin asli. Data energi lewat MQTT."""
+def berisi_simulasi() -> bool:
+    from .services import sim_state
+    with SessionLocal() as db:
+        return sim_state.get(db) is not None
+
+
+def reset_basis_data() -> None:
+    """Hapus seluruh isi basis data dan berkas model. Dipakai saat produksi menemukan data simulasi lama."""
+    from .db import siapkan_timescale
+    from .services.forecast import MODEL_DIR
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    siapkan_timescale()  # tabel baru harus kembali menjadi hypertable di PostgreSQL
+    for f in MODEL_DIR.glob("*.joblib"):
+        f.unlink()
+
+
+def siapkan_produksi() -> None:
+    """Mode produksi: struktur gedung dan perangkat awal serta akun admin asli. Data energi dari gateway meter."""
+    Base.metadata.create_all(engine)
+    if berisi_simulasi():
+        log.warning("Basis data berisi data simulasi; direset untuk mode produksi.")
+        reset_basis_data()
+        reset = True
+    else:
+        reset = False
     with SessionLocal() as db:
         if not db.scalar(select(Gedung.id).limit(1)):
-            buat_struktur(db, pengguna_demo=False)
-            audit(db, None, "sistem.pasang", "Pemasangan awal mode produksi.")
+            buat_struktur(db, pengguna_demo=False, produksi=True)
+            audit(db, None, "sistem.pasang", "Pemasangan awal mode produksi."
+                  + (" Data simulasi lama dihapus." if reset else ""))
             db.commit()
     pastikan_admin(wajib=True)
 

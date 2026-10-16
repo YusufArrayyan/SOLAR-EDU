@@ -1,5 +1,6 @@
 # Blueprint Render: Dashboard Render > New > Blueprint > pilih repo ini.
-# Satu layanan web (Docker) dengan disk permanen untuk SQLite dan berkas model.
+# Satu layanan web (Docker) mode produksi dengan disk permanen untuk SQLite dan berkas model.
+# Data meter dikirim gateway ke https://<layanan>.onrender.com/api/ingest dengan header X-Ingest-Token.
 services:
   - type: web
     name: solar-edu
@@ -15,8 +16,8 @@ services:
       mountPath: /srv/backend/data
       sizeGB: 1
     envVars:
-      - key: SOLAR_SIMULATION   # 1 = data simulasi + akun demo, ditambah akun admin asli di bawah
-        value: "1"
+      - key: SOLAR_SIMULATION   # 0 = produksi: data nyata dari gateway meter, tanpa data simulasi dan akun demo
+        value: "0"
       - key: COOKIE_SECURE
         value: "1"
       - key: ADMIN_EMAIL        # akun asli tim pengelola, diisi saat membuat Blueprint
@@ -27,5 +28,5 @@ services:
         value: Admin tim pengelola
       - key: INGEST_TOKEN
         generateValue: true
-      - key: WEATHER_LIVE       # prakiraan cuaca nyata Open-Meteo; 0 = prakiraan simulasi
-        value: "0"
+      - key: WEATHER_LIVE       # prakiraan cuaca Open-Meteo; wajib untuk fitur suhu dan radiasi model
+        value: "1"

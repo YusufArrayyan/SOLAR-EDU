@@ -54,7 +54,10 @@ def hitung_skor_bulanan(db: Session, gedung: Gedung, periode: date) -> SkorPerin
     if not kwh or not n:
         return None
     jam_total = (akhir - awal).total_seconds() / 3600
-    kwh = kwh * jam_total / n  # isi celah data dengan rerata
+    return simpan_skor(db, gedung, periode, kwh * jam_total / n, jam_total)  # celah data diisi rerata
+
+
+def simpan_skor(db: Session, gedung: Gedung, periode: date, kwh: float, jam_total: float) -> SkorPeringkat:
     inten = intensitas_wh_m2_jam(kwh, gedung.luas_m2, _hari_ke_jam_operasional(gedung, jam_total / 24))
     acuan = settings_store.get(db, "pembanding_fungsi").get(gedung.fungsi, 10.0)
     row = db.scalar(select(SkorPeringkat).where(SkorPeringkat.gedung_id == gedung.id,
@@ -65,6 +68,12 @@ def hitung_skor_bulanan(db: Session, gedung: Gedung, periode: date) -> SkorPerin
     row.intensitas_wh_m2_jam = round(inten, 2)
     row.indeks_efisiensi = indeks_efisiensi(acuan, inten)
     return row
+
+
+def skor_dari_tagihan(db: Session, gedung: Gedung, periode: date, kwh: float) -> SkorPeringkat:
+    """Skor bulanan dari konsumsi satu bulan penuh (gedung tanpa meter)."""
+    akhir = date(periode.year + (periode.month == 12), periode.month % 12 + 1, 1)
+    return simpan_skor(db, gedung, periode, kwh, (akhir - periode).days * 24)
 
 
 def peringkat(db: Session, periode: date | None = None) -> dict:

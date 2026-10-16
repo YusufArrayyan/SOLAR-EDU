@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-VERSI = "1.0.0"
+VERSI = "1.1.0"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
@@ -25,12 +25,13 @@ if hasattr(time, "tzset"):
 SESSION_IDLE_MINUTES = int(os.getenv("SESSION_IDLE_MINUTES", "30"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"  # set 1 di belakang HTTPS (Nginx)
 
-# Mode demo: basis data diisi data simulasi dan worker menambah pembacaan tiap jam.
-SIMULATION = os.getenv("SOLAR_SIMULATION", "1") == "1"
+# Bawaan: PRODUKSI (data nyata dari gateway meter). Mode simulasi hanya untuk pengembangan dan pengujian:
+# basis data diisi data rekaan dan worker membangkitkan pembacaan tiap jam. Nyalakan dengan SOLAR_SIMULATION=1.
+SIMULATION = os.getenv("SOLAR_SIMULATION", "0") == "1"
 SEED_DAYS = int(os.getenv("SOLAR_SEED_DAYS", "150"))
 
-# Ambil prakiraan cuaca nyata (Open-Meteo) bila 1; selain itu prakiraan disimulasikan.
-WEATHER_LIVE = os.getenv("WEATHER_LIVE", "0") == "1"
+# Prakiraan cuaca nyata (Open-Meteo). Bawaan aktif di produksi, mati di mode simulasi.
+WEATHER_LIVE = os.getenv("WEATHER_LIVE", "0" if SIMULATION else "1") == "1"
 SITE_LAT = float(os.getenv("SITE_LAT", "-3.7590"))   # Universitas Bengkulu
 SITE_LON = float(os.getenv("SITE_LON", "102.2722"))
 

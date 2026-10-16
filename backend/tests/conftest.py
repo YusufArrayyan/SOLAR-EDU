@@ -7,6 +7,7 @@ import pytest
 
 _tmp = tempfile.mkdtemp(prefix="solar-test-")
 os.environ["SOLAR_DATA_DIR"] = _tmp
+os.environ["SOLAR_SIMULATION"] = "1"  # tes memakai data simulasi; bawaan aplikasi adalah produksi
 os.environ["SOLAR_SEED_DAYS"] = "110"
 os.environ["ADMIN_EMAIL"] = "admin.asli@unib.ac.id"
 os.environ["ADMIN_PASSWORD"] = ADMIN_SANDI = "Asli-Uji-12345"

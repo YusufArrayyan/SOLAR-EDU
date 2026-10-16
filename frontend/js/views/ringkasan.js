@@ -2,12 +2,18 @@ import { api } from "../api.js";
 import { timeChart } from "../chart.js";
 import * as f from "../fmt.js";
 import { html, render } from "../ui.js";
-import { reload } from "../app.js";
+import { can, reload } from "../app.js";
 import { tugasList, bindTugas } from "./tugas.js";
 
 export default async function ringkasan({ main, user, isCurrent }) {
-  const d = await api("/api/ringkasan");
+  const [d, siap] = await Promise.all([
+    api("/api/ringkasan"),
+    // daftar persiapan bersifat tambahan; kegagalannya tidak boleh menggagalkan Ringkasan
+    can("rekomendasi.verifikasi") ? api("/api/persiapan").catch(() => null) : Promise.resolve(null),
+  ]);
   if (!isCurrent()) return;
+  const adaData = d.seri.some((r) => r.aktual !== null);
+  const adaGrafik = adaData || d.seri.some((r) => r.prediksi !== null);
   document.getElementById("gedung-nama").textContent = d.gedung.nama;
   const a = d.angka;
   const piket = user.peran === "piket";
@@ -47,9 +53,22 @@ export default async function ringkasan({ main, user, isCurrent }) {
       </div>
     </div>
 
+    ${siap && !siap.siap ? html`<section class="panel panel-pad persiapan" aria-labelledby="h-siap">
+      <div class="section-head"><div><h2 id="h-siap">Persiapan sistem</h2><p>${siap.selesai} dari ${siap.total} langkah wajib selesai. Deteksi pemborosan dan rekomendasi aktif setelah semua langkah wajib selesai.</p></div></div>
+      <ol class="checklist">${siap.daftar.map((x) => html`<li class="${x.selesai ? "ok" : ""}">
+        <span class="cek" aria-hidden="true"></span>
+        <div><a href="${x.tautan}"><b>${x.judul}</b></a>${x.wajib ? "" : html` <span class="muted">(disarankan)</span>`}<span class="sub muted">${x.rinci}</span></div>
+        <span class="sr">${x.selesai ? "selesai" : "belum selesai"}</span>
+      </li>`)}</ol>
+    </section>` : ""}
+
     ${d.peringatan.length || d.data_diam.length
-      ? html`<section class="alerts" aria-label="Peringatan">${peringatan}${diam}</section>`
-      : html`<section class="alerts" aria-label="Peringatan"><div class="alert alert-calm"><span class="alert-tag">Normal</span><div class="alert-text"><b>Tidak ada anomali dalam 48 jam terakhir.</b><p>Beban gedung masih dalam rentang prediksi.</p></div></div></section>`}
+      ? html`<section class="alerts section-gap" aria-label="Peringatan">${peringatan}${diam}</section>`
+      : !adaData
+        ? html`<section class="alerts section-gap" aria-label="Status data"><div class="alert alert-info"><span class="alert-tag">Menunggu data</span><div class="alert-text"><b>Belum ada data meter dalam 48 jam terakhir.</b><p>${can("pengaturan.ubah") ? "Daftarkan perangkat di Pengaturan > Gedung, lalu hubungkan gateway sesuai panduan di Status sistem." : "Tim pengelola sedang menghubungkan meter gedung."}</p></div></div></section>`
+        : d.model
+          ? html`<section class="alerts section-gap" aria-label="Peringatan"><div class="alert alert-calm"><span class="alert-tag">Normal</span><div class="alert-text"><b>Tidak ada anomali dalam 48 jam terakhir.</b><p>Beban gedung masih dalam rentang prediksi.</p></div></div></section>`
+          : html`<section class="alerts section-gap" aria-label="Status data"><div class="alert alert-info"><span class="alert-tag">Mengumpulkan data</span><div class="alert-text"><b>Data meter sudah masuk; model prediksi belum aktif.</b><p>Deteksi pemborosan dimulai setelah 21 hari data bersih terkumpul${siap ? ` (sekarang ${f.num(siap.hari_data, 1)} hari)` : ""}.</p></div></div></section>`}
 
     ${d.tugas_saya.length ? html`<section class="panel" aria-labelledby="h-tugas">
       <div class="panel-pad section-head flush"><h2 id="h-tugas">${piket ? "Tugas kamu hari ini" : "Tugas saya"}</h2></div>
@@ -120,7 +139,11 @@ export default async function ringkasan({ main, user, isCurrent }) {
   bindTugas(main, reload);
 
   const seri = d.seri;
-  const chart = timeChart(main.querySelector("#grafik"), {
+  if (!adaGrafik) {
+    main.querySelector("#grafik").innerHTML = '<p class="empty">Grafik muncul setelah data meter masuk. Prediksi ditambahkan setelah model prediksi aktif.</p>';
+    main.querySelector("#grafik + .chart-help")?.remove();
+  }
+  const chart = adaGrafik ? timeChart(main.querySelector("#grafik"), {
     data: seri,
     label: `Grafik beban gedung dan produksi surya per jam, ${seri.length} jam. ${d.peringatan.length} anomali dalam 48 jam terakhir.`,
     unit: "kW",
@@ -141,12 +164,12 @@ export default async function ringkasan({ main, user, isCurrent }) {
       { key: "prediksi", type: "line", cls: "l-pred", label: "Prediksi beban", keyCls: "key-pred", dot: "dot-pred" },
       { key: "aktual", type: "line", cls: "l-act", label: "Beban aktual", keyCls: "key-act", dot: "dot-act" },
     ],
-  });
+  }) : null;
   // segarkan tiap 5 menit
   const timer = setInterval(() => {
     const ae = document.activeElement;
     if (!isCurrent() || document.hidden || (main.contains(ae) && ae.matches("textarea, input"))) return;
     reload();
   }, 300000);
-  return () => { chart.destroy(); clearInterval(timer); };
+  return () => { chart?.destroy(); clearInterval(timer); };
 }

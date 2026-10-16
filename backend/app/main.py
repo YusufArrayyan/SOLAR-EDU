@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .db import Base, engine, migrasi_ringan, siapkan_timescale
-from .routers import admin, auth, core, report
+from .routers import admin, auth, core, kelola, report
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("solar")
@@ -73,6 +73,7 @@ app.include_router(auth.router)
 app.include_router(core.router)
 app.include_router(report.router)
 app.include_router(admin.router)
+app.include_router(kelola.router)
 
 
 @app.get("/api/sehat")

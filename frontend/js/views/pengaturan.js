@@ -2,6 +2,7 @@ import { api } from "../api.js";
 import { go, user } from "../app.js";
 import * as f from "../fmt.js";
 import { busy, emptyState, fieldErrors, html, raw, render, setDirty, toast } from "../ui.js";
+import { gedung } from "./gedung.js";
 
 const TABS = [
   ["parameter", "Parameter"], ["gedung", "Gedung"], ["jadwal", "Jadwal kuliah"], ["pengguna", "Pengguna"], ["sistem", "Status sistem"], ["audit", "Log audit"],
@@ -58,44 +59,6 @@ async function parameter(box, { isCurrent }) {
       box.querySelector("#status-simpan").textContent = "";
       toast(r.berubah.length ? `${r.berubah.length} pengaturan disimpan dan dicatat di log audit.` : "Tidak ada perubahan.");
     } catch (ex) { fieldErrors(form, ex.kolom); toast(ex.message, "err"); }
-  });
-}
-
-/* ------------------------------------------------------------------ gedung (U9) */
-const LABEL_FUNGSI = { kuliah: "Gedung kuliah", laboratorium: "Laboratorium", kantor: "Kantor", perpustakaan: "Perpustakaan" };
-const PERAN_GEDUNG = { percontohan: "Gedung percontohan", pembanding: "Gedung pembanding", lain: "Gedung lain (papan peringkat)" };
-
-async function gedung(box, { isCurrent }) {
-  const d = await api("/api/gedung");
-  if (!isCurrent()) return;
-  render(box, html`
-    <p class="muted">Luas dan jam operasional dipakai untuk intensitas energi dan indeks efisiensi. Kapasitas panel surya dipakai untuk prediksi produksi.</p>
-    <div class="stack section-sm">${d.baris.map((g) => html`<section class="panel panel-pad" aria-labelledby="g-${g.id}">
-      <div class="section-head"><h2 id="g-${g.id}">${g.nama}</h2><span class="chip chip-plain">${PERAN_GEDUNG[g.peran] || g.peran}</span></div>
-      <form class="grid-form" data-gedung="${g.id}" novalidate>
-        <div class="field"><label for="n-${g.id}">Nama</label><input class="input" id="n-${g.id}" name="nama" value="${g.nama}" autocomplete="off"><span class="err" data-for="nama" hidden></span></div>
-        <div class="field"><label for="f-${g.id}">Fungsi</label><select class="input" id="f-${g.id}" name="fungsi" autocomplete="off">${d.fungsi.map((k) => html`<option value="${k}" ${raw(k === g.fungsi ? "selected" : "")}>${LABEL_FUNGSI[k] || k}</option>`)}</select><span class="err" data-for="fungsi" hidden></span></div>
-        <div class="field"><label for="l-${g.id}">Luas lantai</label><div class="input-unit"><input class="input" id="l-${g.id}" name="luas_m2" type="number" inputmode="decimal" min="50" step="any" value="${g.luas_m2}" autocomplete="off"><span>m²</span></div><span class="err" data-for="luas_m2" hidden></span></div>
-        <div class="field"><label for="j-${g.id}">Jam operasional</label><div class="input-unit"><input class="input" id="j-${g.id}" name="jam_operasional_pekan" type="number" inputmode="decimal" min="1" max="168" step="any" value="${g.jam_operasional_pekan}" autocomplete="off"><span>jam/pekan</span></div><span class="err" data-for="jam_operasional_pekan" hidden></span></div>
-        ${g.peran === "percontohan" ? html`<div class="field"><label for="p-${g.id}">Kapasitas panel surya</label><div class="input-unit"><input class="input" id="p-${g.id}" name="kapasitas_pv_kwp" type="number" inputmode="decimal" min="0" step="any" value="${g.kapasitas_pv_kwp}" autocomplete="off"><span>kWp</span></div><span class="err" data-for="kapasitas_pv_kwp" hidden></span></div>` : ""}
-        <div class="row row-end span-all"><button class="btn btn-primary" type="submit">Simpan ${g.peran === "lain" ? "data gedung" : "gedung ini"}</button></div>
-      </form>
-    </section>`)}</div>`);
-  box.querySelectorAll("form[data-gedung]").forEach((form) => {
-    form.addEventListener("input", () => setDirty(true));
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const body = { nama: form.elements.nama.value, fungsi: form.elements.fungsi.value,
-        luas_m2: Number(form.elements.luas_m2.value), jam_operasional_pekan: Number(form.elements.jam_operasional_pekan.value) };
-      if (form.elements.kapasitas_pv_kwp) body.kapasitas_pv_kwp = Number(form.elements.kapasitas_pv_kwp.value);
-      try {
-        const g = await busy(form.querySelector('[type="submit"]'), "Menyimpan…", () => api(`/api/gedung/${form.dataset.gedung}`, { method: "PATCH", body }));
-        fieldErrors(form, {});
-        setDirty(false);
-        form.closest("section").querySelector("h2").textContent = g.nama;
-        toast(g.berubah ? `${g.nama} disimpan dan dicatat di log audit.` : "Tidak ada perubahan.");
-      } catch (ex) { fieldErrors(form, ex.kolom); toast(ex.message, "err"); }
-    });
   });
 }
 
@@ -271,7 +234,7 @@ async function sistem(box, { isCurrent }) {
       <section class="panel panel-pad" aria-labelledby="h-worker">
         <h2 id="h-worker">Pekerja terjadwal</h2>
         <dl class="kv section-sm">
-          <dt>Mode</dt><dd>${d.simulasi ? "Simulasi (data dibangkitkan tiap jam)" : "Produksi (data dari MQTT)"}</dd>
+          <dt>Mode</dt><dd>${d.simulasi ? "Simulasi pengembangan (data dibangkitkan tiap jam)" : "Produksi (data dari gateway lewat MQTT atau HTTPS)"}</dd>
           <dt>Siklus jam</dt><dd>${d.pekerja.terakhir_jam ? f.waktu(d.pekerja.terakhir_jam) : "–"}</dd>
           <dt>Siklus harian</dt><dd>${d.pekerja.terakhir_harian ? f.waktu(d.pekerja.terakhir_harian) : "–"}</dd>
           <dt>Kelengkapan 30 hari</dt><dd>${rerata === null ? "–" : f.pct(rerata, 1)} <span class="muted">target ≥ 95 %</span></dd>
@@ -283,6 +246,17 @@ async function sistem(box, { isCurrent }) {
         <button class="btn section-sm" type="button" id="latih">Latih ulang model sekarang</button>
       </section>
     </div>
+    <section class="panel panel-pad section" aria-labelledby="h-gateway">
+      <h2 id="h-gateway">Menghubungkan gateway meter</h2>
+      <p class="body section-sm">Gateway gedung mengirim pembacaan tiap menit lewat MQTT (topik <span class="mono">solar/&lt;kode-perangkat&gt;</span>) atau langsung lewat HTTPS ke alamat di bawah. Token tersimpan di variabel lingkungan <span class="mono">INGEST_TOKEN</span> server dan tidak ditampilkan di sini.</p>
+      <pre class="formula section-sm">POST ${location.origin}/api/ingest
+X-Ingest-Token: &lt;INGEST_TOKEN&gt;
+Content-Type: application/json
+
+[{"perangkat": "fk-a/panel-l1", "waktu": "2026-10-16T08:01:00+07:00", "beban_kw": 12.4},
+ {"perangkat": "fk-a/inverter", "waktu": "2026-10-16T08:01:00+07:00", "produksi_pv_kw": 18.2}]</pre>
+      <p class="muted section-sm">Kode perangkat diatur di tab Gedung. Kiriman dari kode yang belum terdaftar ditolak dan dicatat sebagai peristiwa data.</p>
+    </section>
     <section class="section" aria-labelledby="h-peristiwa">
       <div class="section-head"><h2 id="h-peristiwa">Peristiwa data</h2><p>Paket hilang, kegagalan API cuaca, perangkat diam</p></div>
       ${d.peristiwa.length ? html`<div class="table-wrap"><table><thead><tr><th scope="col">Waktu</th><th scope="col">Jenis</th><th scope="col">Detail</th></tr></thead>

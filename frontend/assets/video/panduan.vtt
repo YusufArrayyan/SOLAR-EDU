@@ -1,0 +1,127 @@
+WEBVTT
+
+NOTE Panduan SOLAR-EDU AI. Tampilan memakai data contoh.
+
+1
+00:00:01.517 --> 00:00:06.361
+SOLAR-EDU AI membantu gedung kampus menekan pemborosan listrik.
+
+2
+00:00:06.361 --> 00:00:11.282
+Sistem membaca meter listrik dan panel surya, memprediksi beban,
+
+3
+00:00:11.282 --> 00:00:16.203
+lalu mengusulkan tindakan. Keputusannya tetap di tangan manusia.
+
+4
+00:00:16.220 --> 00:00:21.035
+Masuk dengan email kampus dan kata sandi dari tim pengelola.
+
+5
+00:00:21.035 --> 00:00:25.048
+Menu yang tampil menyesuaikan peran masing-masing.
+
+6
+00:00:25.062 --> 00:00:31.149
+Halaman Ringkasan menjawab satu pertanyaan: apa yang perlu dilakukan hari ini.
+
+7
+00:00:31.149 --> 00:00:36.534
+Peringatan anomali selalu berada paling atas, lalu empat angka utama.
+
+8
+00:00:36.546 --> 00:00:42.156
+Garis hitam adalah beban aktual, garis biru prediksi beserta rentangnya,
+
+9
+00:00:42.156 --> 00:00:47.220
+dan area kuning produksi panel surya. Jam anomali ditandai merah,
+
+10
+00:00:47.220 --> 00:00:49.089
+lengkap dengan labelnya.
+
+11
+00:00:49.100 --> 00:00:54.578
+Menu Rekomendasi berisi usulan sistem. Setiap usulan menyebut alasan,
+
+12
+00:00:54.578 --> 00:00:58.786
+lokasi panel, dan perkiraan energi yang bisa dihemat.
+
+13
+00:00:58.800 --> 00:01:02.463
+Di halaman detail, periksa alasan dan grafiknya.
+
+14
+00:01:02.463 --> 00:01:06.737
+Kalau masuk akal, pilih mahasiswa piket dan batas waktu,
+
+15
+00:01:06.737 --> 00:01:10.324
+lalu tekan Verifikasi rekomendasi. Kalau tidak,
+
+16
+00:01:10.324 --> 00:01:16.200
+tolak dengan alasan, dan alasan itu dipakai untuk memperbaiki ambang deteksi.
+
+17
+00:01:16.215 --> 00:01:21.165
+Mahasiswa piket melihat tugasnya di menu Tugas dan rekomendasi.
+
+18
+00:01:21.165 --> 00:01:25.722
+Setelah mengecek ruangan, tekan Tandai sudah dilaksanakan,
+
+19
+00:01:25.722 --> 00:01:27.686
+lalu tulis catatan bukti.
+
+20
+00:01:29.751 --> 00:01:34.390
+Sejak itu sistem memantau konsumsi selama empat belas hari.
+
+21
+00:01:34.390 --> 00:01:40.365
+Pengelola kemudian mencatat hasilnya, dibandingkan dengan gedung pembanding.
+
+22
+00:01:40.374 --> 00:01:45.506
+Pimpinan kampus membuka Dampak untuk melihat penghematan terukur,
+
+23
+00:01:45.506 --> 00:01:50.559
+biaya dan emisi yang terhindarkan, serta indikator keberhasilan.
+
+24
+00:01:51.695 --> 00:01:57.795
+Papan peringkat membandingkan efisiensi antargedung memakai indeks yang adil
+
+25
+00:01:57.795 --> 00:02:00.524
+terhadap luas dan jam operasional.
+
+26
+00:02:00.527 --> 00:02:05.062
+Tim pengelola menyiapkan sistem di Pengaturan: data gedung,
+
+27
+00:02:05.062 --> 00:02:09.443
+perangkat meter, ruang, jadwal kuliah, dan akun pengguna.
+
+28
+00:02:09.443 --> 00:02:15.669
+Pada pemasangan baru, Ringkasan menampilkan daftar persiapan sampai semua langkah
+
+29
+00:02:15.669 --> 00:02:16.284
+selesai.
+
+30
+00:02:20.310 --> 00:02:26.691
+Mahasiswa dan dosen dapat mengunduh dataset dan mengikuti modul praktikum di Pusat
+
+31
+00:02:26.691 --> 00:02:32.138
+belajar. Langkah tertulis untuk setiap peran tersedia di menu Panduan.

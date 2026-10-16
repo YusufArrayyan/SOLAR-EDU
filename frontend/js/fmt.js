@@ -53,3 +53,6 @@ export function relatif(x) {
 export function inisial(nama = "") {
   return nama.replace(/^(Dr\.|Prof\.)\s*/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
+
+export const FUNGSI_GEDUNG = { kuliah: "Gedung kuliah", laboratorium: "Laboratorium", kantor: "Kantor", perpustakaan: "Perpustakaan" };
+export const fungsiGedung = (k) => FUNGSI_GEDUNG[k] || k;

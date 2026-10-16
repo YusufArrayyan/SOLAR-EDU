@@ -1,28 +1,33 @@
-# SOLAR-EDU AI · versi 1.0.0
+# SOLAR-EDU AI · versi 1.1.0
 
 Aplikasi web yang membaca konsumsi listrik dan produksi panel surya satu gedung kampus, memprediksi beban 24 jam ke depan dengan Random Forest, menandai pemborosan dari residu prediksi, lalu mengubahnya menjadi rekomendasi yang **selalu diverifikasi manusia**. Dibangun sesuai `PRD SOLAR-EDU AI.docx` (versi 1: delapan modul, lima peran, satu gedung).
 
-> Prototipe berjalan dengan **data simulasi** dan setiap layar diberi label "Data simulasi". Angka-angkanya bukan hasil pengukuran.
+Bawaan aplikasi adalah **mode produksi**: hanya data nyata dari meter dan inverter gedung, tanpa data simulasi dan tanpa akun demo. Mode simulasi tersedia khusus untuk pengembangan dan pengujian.
 
-## Menjalankan (mode simulasi)
+## Mulai cepat (produksi)
+
+1. Deploy ([Render](#deploy-ke-render) atau [server kampus](#pemasangan-di-server-kampus)) dengan `ADMIN_EMAIL`, `ADMIN_PASSWORD`, dan `INGEST_TOKEN`.
+2. Masuk dengan akun admin. Ringkasan menampilkan **Persiapan sistem**: daftar langkah sampai sistem siap.
+3. **Pengaturan > Gedung**: periksa data gedung, daftarkan meter per panel dan inverter (kode = topik gateway), lalu petakan ruang ke panel.
+4. **Pengaturan > Jadwal kuliah**: impor CSV jadwal semester.
+5. **Pengaturan > Pengguna**: buat akun pengelola gedung, mahasiswa piket, dan pimpinan.
+6. Hubungkan gateway sesuai contoh di **Pengaturan > Status sistem** (MQTT atau HTTPS ke `/api/ingest`).
+7. Setelah 21 hari data bersih terkumpul, model prediksi dilatih otomatis pukul 02.00, lalu deteksi pemborosan dan rekomendasi berjalan.
+
+Video dan langkah tertulis per peran tersedia di menu **Panduan** di dalam aplikasi.
+
+## Menjalankan secara lokal
 
 Butuh Python 3.11 atau lebih baru.
 
 ```bash
 python -m pip install -r backend/requirements.txt
-python backend/run.py
+python backend/run.py --simulasi
 ```
 
-Buka http://localhost:8080. Saat pertama kali dijalankan, sistem membangkitkan 150 hari data simulasi (sekitar 35 detik), melatih model, dan memutar ulang 60 hari masa pilot. Port bisa diganti lewat variabel `PORT`. Di Windows bisa juga klik ganda `scripts/jalankan.bat`.
+`--simulasi` mengisi 150 hari data contoh dan akun uji (kata sandi di [backend/app/seed.py](backend/app/seed.py)) agar semua fitur bisa dicoba. Di Windows bisa juga klik ganda `scripts/jalankan.bat`. Tanpa `--simulasi`, server berjalan dalam mode produksi dan wajib diberi `ADMIN_EMAIL`, `ADMIN_PASSWORD` (minimal 10 karakter), dan `INGEST_TOKEN` (minimal 24 karakter).
 
-### Akun demo dan akun asli
-
-Mode simulasi menyediakan dua jenis akun:
-
-- **Akun demo** (lima peran di tabel bawah) memakai data simulasi dan dipakai bersama. Kata sandinya diatur lewat `DEMO_PASSWORD` (bawaan di [backend/app/seed.py](backend/app/seed.py)) dan diisi otomatis saat peran dipilih di halaman Masuk. Akun demo tidak bisa melihat, mengubah, mereset, atau menonaktifkan akun asli, tidak bisa menambah pengguna, dan tidak bisa mengganti kata sandinya.
-- **Akun asli** dibuat dari variabel `ADMIN_EMAIL` dan `ADMIN_PASSWORD` (peran Tim pengelola). Admin ini bisa menambah akun asli lain di Pengaturan > Pengguna.
-
-| Peran | Email demo | Layar utama |
+| Peran (mode simulasi) | Email uji | Layar utama |
 |---|---|---|
 | Pengelola gedung | pengelola@solar-edu.test | Ringkasan, Rekomendasi |
 | Mahasiswa piket | bima.piket@solar-edu.test (juga nadia., sari.) | Tugas dan rekomendasi |
@@ -30,18 +35,17 @@ Mode simulasi menyediakan dua jenis akun:
 | Pimpinan kampus | pimpinan@solar-edu.test | Dampak, Papan peringkat |
 | Mahasiswa dan dosen | mahasiswa@solar-edu.test | Pusat belajar |
 
-Untuk mengulang data simulasi dari awal, hapus folder `backend/data/` lalu jalankan lagi.
+Server produksi yang menemukan basis data berisi data simulasi akan meresetnya otomatis saat menyala.
 
 ## Deploy ke Render
 
-Repo ini menyertakan Blueprint [render.yaml](render.yaml): satu layanan web Docker di region Singapura, paket Starter, dan disk permanen 1 GB untuk basis data serta model.
+Blueprint [render.yaml](render.yaml): satu layanan web Docker mode produksi di region Singapura, paket Starter, dan disk permanen 1 GB untuk basis data serta model.
 
 1. Di dashboard Render pilih **New > Blueprint**, lalu hubungkan repo GitHub ini.
-2. Isi `ADMIN_EMAIL` dan `ADMIN_PASSWORD` (minimal 10 karakter) saat diminta. `INGEST_TOKEN` dibuat otomatis oleh Render.
-3. Tekan **Apply**. Deploy pertama membangun image lalu mengisi data simulasi 150 hari (beberapa menit di CPU kecil). Setelah itu aplikasi tersedia di `https://solar-edu.onrender.com` atau nama serupa.
-4. Masuk dengan akun asli, lalu ganti kata sandi di halaman Akun.
+2. Isi `ADMIN_EMAIL` dan `ADMIN_PASSWORD` saat diminta. `INGEST_TOKEN` dibuat otomatis oleh Render; salin nilainya ke konfigurasi gateway.
+3. Tekan **Apply**, lalu ikuti [Mulai cepat](#mulai-cepat-produksi).
 
-Paket Free Render tidak mendukung disk permanen dan mematikan layanan saat tidak aktif, sehingga data simulasi dibangkitkan ulang setiap kali layanan bangun. Untuk produksi dengan data meter nyata, gunakan pemasangan di server kampus di bawah.
+Layanan yang sebelumnya berjalan dengan data simulasi direset otomatis saat versi ini pertama kali menyala. Gateway gedung mengirim data langsung ke `https://<layanan>.onrender.com/api/ingest`; Render tidak menjalankan broker MQTT.
 
 ## Pemetaan modul PRD
 
@@ -91,6 +95,17 @@ Skrip ini membuat `.env` berisi rahasia acak, sertifikat TLS (HTTPS dan broker M
 | `backup` | Cadangan harian 02.30 WIB, terenkripsi AES-256, disimpan 30 hari di `backups/` |
 
 Pemulihan: `sh scripts/pulihkan.sh backups/<berkas>.sql.gz.enc`. Kode perangkat bawaan: `fk-a/panel-l1`, `fk-a/panel-l2`, `fk-a/panel-l3`, `fk-a/panel-lab`, `fk-a/inverter`, `fkip-v/utama`.
+
+## Video panduan
+
+Video di menu Panduan dibuat ulang dengan satu perintah: rekaman layar aplikasi sungguhan (server lokal berdata contoh), narasi ElevenLabs, teks keterangan VTT, dan gambar sampul.
+
+```bash
+python -m pip install playwright imageio-ffmpeg
+python tools/video/buat_video.py
+```
+
+Narasi membutuhkan `ELEVENLABS_API_KEY` di variabel lingkungan (opsional: `ELEVENLABS_VOICE_ID`). Tambahkan `--tanpa-suara` untuk versi teks keterangan saja.
 
 ## Dokumentasi
 

@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .. import settings_store
+from .. import config, settings_store
 from ..config import DATA_DIR
 from ..models import AgregatJam, Cuaca, Gedung, Prediksi, VersiModel
 from . import data_pipeline, simulate
@@ -169,10 +169,15 @@ def fitur_masa_depan(db: Session, gedung: Gedung, mulai: datetime, jam: int = 24
     for i in range(jam):
         t = mulai + timedelta(hours=i)
         c = cuaca.get(t)
-        if c is None:
+        if c is not None:
+            suhu, rad = c.suhu, c.radiasi
+        elif config.SIMULATION:
             suhu, rad = simulate.cuaca_jam(t + timedelta(minutes=30))
         else:
-            suhu, rad = c.suhu, c.radiasi
+            cad = data_pipeline.cuaca_cadangan(db, t)
+            if cad is None:
+                continue  # tanpa data cuaca sama sekali, jam ini tidak diprediksi
+            suhu, rad = cad
         rows.append({"waktu": t, "jam": t.hour, "hari": t.weekday(),
                      "ruang_terjadwal": simulate.ruang_terjadwal_jam(jadwal, t), "suhu": suhu, "radiasi": rad})
     return pd.DataFrame(rows)
@@ -191,6 +196,8 @@ def prediksi(db: Session, gedung: Gedung, mulai: datetime, jam: int = 24) -> int
         return 0
     versi, model = aktif
     f = fitur_masa_depan(db, gedung, mulai, jam)
+    if f.empty:
+        return 0
     mean, lo, hi = prediksi_rentang(model, f[FITUR].to_numpy(float))
     pv = prediksi_pv(db, gedung, f["radiasi"].to_numpy())
     db.execute(delete(Prediksi).where(Prediksi.gedung_id == gedung.id, Prediksi.waktu_target >= mulai,

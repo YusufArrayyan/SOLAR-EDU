@@ -9,6 +9,7 @@ const ICON = {
   peringkat: '<path d="M8 21V11M16 21V7M12 21V3M4 21h16"/>',
   dampak: '<path d="M12 3v18M17 7.5c0-1.9-2.2-3.5-5-3.5s-5 1.6-5 3.5S9.2 11 12 11.5s5 1.9 5 4-2.2 3.5-5 3.5-5-1.6-5-3.5"/>',
   belajar: '<path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c0 1.7 2.7 3 6 3s6-1.3 6-3V9"/>',
+  panduan: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/>',
   pengaturan: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 };
 
@@ -19,6 +20,7 @@ const ROUTES = [
   { path: "dampak", label: "Dampak", izin: "dampak.lihat", load: () => import("./views/dampak.js") },
   { path: "belajar", label: "Pusat belajar", izin: "belajar.lihat", load: () => import("./views/belajar.js") },
   { path: "pengaturan", label: "Pengaturan", izin: "pengaturan.ubah", load: () => import("./views/pengaturan.js") },
+  { path: "panduan", label: "Panduan", izin: null, load: () => import("./views/panduan.js") },
 ];
 const AKUN = { path: "akun", label: "Akun", izin: null, load: () => import("./views/akun.js") };
 const BERANDA = { pengelola: "ringkasan", piket: "rekomendasi", tim: "ringkasan", pimpinan: "dampak", akademik: "belajar" };
@@ -229,10 +231,13 @@ export function reload() { state.focusMain = false; route(); }
 
 /* ---------- mulai */
 (async () => {
-  try {
-    const [u, sehat] = await Promise.all([api("/api/auth/saya"), fetch("/api/sehat").then((r) => r.json()).catch(() => ({}))]);
-    $("badge-sim").hidden = sehat.simulasi === false;
+  // status server dibaca terpisah dari sesi, agar label "Data simulasi" benar walau pengguna baru masuk
+  fetch("/api/sehat").then((r) => r.json()).then((sehat) => {
+    $("badge-sim").hidden = sehat.simulasi !== true;
     if (sehat.gedung) $("gedung-nama").textContent = sehat.gedung;
+  }).catch(() => {});
+  try {
+    const u = await api("/api/auth/saya");
     state.user = u;
     await boot();
   } catch {

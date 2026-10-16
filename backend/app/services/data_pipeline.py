@@ -96,7 +96,8 @@ def agregasi(db: Session, gedung: Gedung, mulai: datetime, selesai: datetime, ex
         if meter_ids and jam in beban_jam.index and beban_jam.at[jam, "count"] == len(meter_ids):
             beban = float(beban_jam.at[jam, "sum"])
         if not inv_ids:
-            pv = 0.0
+            # tanpa inverter terdaftar: 0 hanya untuk gedung tanpa panel surya, selain itu "tidak ada data"
+            pv = 0.0 if not gedung.kapasitas_pv_kwp else None
         elif jam in pv_jam.index and pv_jam.at[jam, "count"] == len(inv_ids):
             pv = float(pv_jam.at[jam, "sum"])
         else:
@@ -173,3 +174,32 @@ def kelengkapan_harian(db: Session, gedung_id: str, hari: int = 30) -> list[dict
     df["valid"] = (df["kel"] >= 0.75) & df["beban"].notna()
     g = df.groupby("tgl")["valid"].mean().reset_index()
     return [{"tanggal": str(r.tgl), "kelengkapan": round(float(r.valid), 4)} for r in g.itertuples()]
+
+
+def cuaca_cadangan(db: Session, t: datetime) -> tuple[float, float] | None:
+    """Prakiraan cadangan yang jujur bila penyedia cuaca gagal: nilai jam yang sama kemarin (persistensi),
+    lalu rerata jam yang sama 7 hari terakhir. Tidak memakai cuaca rekaan."""
+    for hari in (1, 2):
+        c = db.get(Cuaca, t - timedelta(days=hari))
+        if c is not None:
+            return c.suhu, c.radiasi
+    rows = [db.get(Cuaca, t - timedelta(days=h)) for h in range(1, 8)]
+    rows = [r for r in rows if r is not None]
+    if rows:
+        return (round(sum(r.suhu for r in rows) / len(rows), 1), round(sum(r.radiasi for r in rows) / len(rows), 1))
+    return None
+
+
+def isi_cuaca_cadangan(db: Session, mulai: datetime, selesai: datetime) -> int:
+    """Lengkapi jam yang belum punya prakiraan dengan cadangan persistensi."""
+    n = 0
+    t = mulai
+    while t < selesai:
+        if db.get(Cuaca, t) is None:
+            nilai = cuaca_cadangan(db, t)
+            if nilai is not None:
+                db.add(Cuaca(waktu=t, suhu=nilai[0], radiasi=nilai[1], sumber="persistensi", diambil_pada=datetime.now()))
+                db.flush()
+                n += 1
+        t += timedelta(hours=1)
+    return n

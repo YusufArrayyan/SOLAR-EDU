@@ -38,11 +38,15 @@ FastAPI (backend/app) ── PostgreSQL + TimescaleDB ── worker terjadwal (t
 - Berkas model disimpan di `SOLAR_DATA_DIR/models/` (8 versi terakhir). Metrik semua versi tetap tercatat di tabel `model_versi`.
 - Rekomendasi yang ditolak mengembalikan jam anomalinya menjadi data normal, sehingga ikut dipelajari pada pelatihan ulang berikutnya.
 
-## Menambah perangkat atau gedung
+## Menambah perangkat, ruang, atau gedung
 
-1. Tambah baris `perangkat` dengan `kode` sama dengan topik MQTT (`solar/<kode>`). Pemasangan awal sudah membuat 6 perangkat bawaan (lihat `seed.buat_struktur`).
-2. Data gedung (luas, jam operasional, kWp, fungsi) diubah di **Pengaturan > Gedung**.
-3. Versi 1 dikunci pada satu gedung percontohan. Perluasan termasuk Fase 3 dan butuh kalibrasi ulang ambang.
+Semuanya lewat **Pengaturan > Gedung**:
+
+- **Perangkat:** kode harus sama dengan topik MQTT `solar/<kode>` atau kolom `perangkat` di `/api/ingest`. Perangkat yang sudah punya data tidak bisa dihapus.
+- **Ruang:** nama harus sama persis dengan kolom `ruang` di CSV jadwal; panel pemasok dipakai untuk lokasi rekomendasi.
+- **Gedung lain:** untuk papan peringkat antargedung. Konsumsinya diisi per bulan dari tagihan PLN.
+
+Versi 1 dikunci pada satu gedung percontohan. Perluasan termasuk Fase 3 dan butuh kalibrasi ulang ambang.
 
 ## Format data masuk
 
@@ -59,9 +63,10 @@ Nilai negatif atau di atas `batas_fisik_kw` diberi kualitas 2 dan tidak dipakai.
 | Variabel | Bawaan | Arti |
 |---|---|---|
 | `DATABASE_URL` | SQLite di `backend/data` | `postgresql+psycopg://…` untuk produksi |
-| `SOLAR_SIMULATION` | `1` | `1` = data simulasi dan akun uji; `0` = produksi |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | – | Akun tim pengelola pertama (mode produksi) |
-| `WEATHER_LIVE` | `0` | `1` = ambil prakiraan Open-Meteo |
+| `SOLAR_SIMULATION` | `0` | `0` = produksi (bawaan); `1` = data simulasi dan akun uji untuk pengembangan, sama dengan `run.py --simulasi` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | – | Akun tim pengelola pertama (wajib di produksi) |
+| `SOLAR_JOBS` | `min(4, CPU)` | Thread pelatihan Random Forest; set kecil di server 512 MB |
+| `WEATHER_LIVE` | `1` di produksi, `0` di simulasi | Prakiraan Open-Meteo. Bila gagal, dipakai cuaca jam yang sama kemarin (persistensi). |
 | `SITE_LAT`, `SITE_LON` | Universitas Bengkulu | Lokasi prakiraan cuaca |
 | `INGEST_TOKEN` | `dev-ingest-token` | Token jembatan MQTT. **Wajib diganti di produksi.** |
 | `COOKIE_SECURE` | `0` | `1` di belakang HTTPS |

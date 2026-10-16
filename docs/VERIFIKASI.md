@@ -1,4 +1,4 @@
-# Laporan verifikasi akhir · SOLAR-EDU AI 1.0.0
+# Laporan verifikasi akhir · SOLAR-EDU AI 1.1.0
 
 Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode simulasi. Semua angka model dan dampak berasal dari **data simulasi**.
 
@@ -6,7 +6,7 @@ Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode 
 
 | Pemeriksaan | Hasil |
 |---|---|
-| Uji otomatis (`pytest`) | 31 dari 31 lulus |
+| Uji otomatis (`pytest`) | 32 dari 32 lulus, termasuk uji mode produksi di proses terpisah |
 | Uji serangan dari luar (sesi, CSRF, IDOR, rate limit, traversal, header, injeksi CSV) | 27 dari 27 lulus |
 | Matriks hak akses di antarmuka, 5 peran × 7 layar | Cocok dengan PRD |
 | Kontras warna WCAG 2.2 AA, 18 pasangan token terang dan gelap | 18 dari 18 lulus (terendah 4,55:1) |
@@ -70,6 +70,19 @@ Tanggal uji: 15 Oktober 2026. Lingkungan: Windows 11, Python 3.14, SQLite, mode 
 5. Paket hilang kini dicatat sebagai peristiwa data (F01).
 6. Sesi kedaluwarsa dibersihkan tiap jam. Dokumentasi API (`/api/docs`) ditutup di mode produksi.
 7. Reset kata sandi oleh tim memakai formulir dengan isian tersamar, bukan kotak `prompt()`.
+
+## Versi 1.1.0: produksi penuh
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Bawaan produksi | Tanpa data simulasi, akun demo, jadwal, perangkat, ruang, maupun gedung rekaan (`test_produksi_bersih_dan_reset_data_simulasi`) |
+| Basis data simulasi lama | Direset otomatis saat server produksi menyala; hypertable TimescaleDB dibuat ulang |
+| Perangkat, ruang, gedung lain, konsumsi bulanan | Tambah, ubah, hapus dengan validasi; perangkat berdata dan ruang terjadwal tidak bisa dihapus |
+| Persiapan sistem | 6 langkah wajib dan 2 disarankan tampil di Ringkasan sampai sistem siap |
+| Cuaca cadangan | Persistensi jam yang sama kemarin; tidak ada cuaca rekaan di produksi |
+| Keadaan kosong | Angka tanpa data tampil "–", grafik kosong diganti keterangan, label "Data simulasi" hanya muncul di mode simulasi |
+| Code review (10 temuan) | Semua diperbaiki, antara lain render.yaml masih mode simulasi, hypertable hilang setelah reset, batas fisik perangkat terbulatkan saat diubah, dan galat daftar persiapan menggagalkan Ringkasan |
+| Video panduan | Rekaman alur nyata 2,5 menit dengan teks keterangan VTT di menu Panduan |
 
 ## Persiapan deploy Render
 

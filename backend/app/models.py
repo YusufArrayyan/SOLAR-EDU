@@ -249,6 +249,18 @@ class SkorPeringkat(Base):
     gedung = relationship("Gedung")
 
 
+class KonsumsiBulanan(Base):
+    """Konsumsi bulanan gedung tanpa meter (dari tagihan PLN) untuk papan peringkat antargedung."""
+    __tablename__ = "konsumsi_bulanan"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    gedung_id: Mapped[str] = mapped_column(ForeignKey("gedung.id", ondelete="CASCADE"))
+    periode: Mapped[datetime] = mapped_column(Date)
+    kwh: Mapped[float] = mapped_column(Float)
+    sumber: Mapped[str] = mapped_column(String(60), default="tagihan PLN")
+    dicatat_oleh: Mapped[str | None] = mapped_column(ForeignKey("pengguna.id"), nullable=True)
+    waktu: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
 class Notifikasi(Base):
     __tablename__ = "notifikasi"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)

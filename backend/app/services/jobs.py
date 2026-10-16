@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .. import config
 from ..db import SessionLocal
-from ..models import AgregatJam, Anomali, Gedung, Perangkat, Prediksi, Rekomendasi, VersiModel
+from ..models import AgregatJam, Anomali, Gedung, Perangkat, PeristiwaData, Prediksi, Rekomendasi, VersiModel
 from . import anomaly, data_pipeline, forecast, impact, notify, recommend, sim_state, simulate
 
 log = logging.getLogger("solar.jobs")
@@ -49,7 +49,7 @@ def simulasikan(db: Session, mulai: datetime, selesai: datetime, catat_hilang: b
 
 
 def perbarui_cuaca(db: Session, sekarang: datetime) -> None:
-    """F02: prakiraan 48 jam; kegagalan API memicu peringatan admin dan jatuh ke prakiraan simulasi."""
+    """F02: prakiraan 48 jam; kegagalan API memicu peringatan admin dan jatuh ke prakiraan cadangan."""
     awal = simulate.hour_floor(sekarang) - timedelta(hours=3)
     akhir = simulate.hour_floor(sekarang) + timedelta(hours=49)
     if config.WEATHER_LIVE:
@@ -60,9 +60,12 @@ def perbarui_cuaca(db: Session, sekarang: datetime) -> None:
         except Exception as e:  # noqa: BLE001
             data_pipeline.catat_peristiwa(db, "cuaca_gagal", str(e)[:300])
             notify.ke_peran(db, ["tim"], "galat_data", "Prakiraan cuaca gagal diambil",
-                            "Sistem memakai prakiraan cadangan. Cek koneksi server ke penyedia cuaca.",
-                            "#/pengaturan", waktu=sekarang)
-    data_pipeline.simpan_cuaca(db, awal, akhir, "simulasi")
+                            "Sistem memakai prakiraan cadangan dari cuaca jam yang sama kemarin. "
+                            "Cek koneksi server ke penyedia cuaca.", "#/pengaturan?tab=sistem", waktu=sekarang)
+    if config.SIMULATION:
+        data_pipeline.simpan_cuaca(db, awal, akhir, "simulasi")
+    else:
+        data_pipeline.isi_cuaca_cadangan(db, awal, akhir)
 
 
 def cek_perangkat_diam(db: Session, sekarang: datetime) -> None:
@@ -139,7 +142,11 @@ def siklus_harian(db: Session, sekarang: datetime | None = None, latih: bool | N
             forecast.latih(db, g, sekarang, "Latih ulang mingguan terjadwal.")
             STATUS["terakhir_latih"] = sekarang.isoformat()
         except ValueError as e:
-            data_pipeline.catat_peristiwa(db, "latih_gagal", str(e))
+            # saat masih mengumpulkan data, cukup dicatat sekali per pekan agar daftar peristiwa tidak banjir
+            sudah = db.scalar(select(PeristiwaData.id).where(PeristiwaData.jenis == "latih_gagal",
+                                                            PeristiwaData.waktu >= sekarang - timedelta(days=7)).limit(1))
+            if not sudah:
+                data_pipeline.catat_peristiwa(db, "latih_gagal", str(e))
     hari_ini = sekarang.replace(hour=0, minute=0, second=0, microsecond=0)
     forecast.prediksi(db, g, hari_ini + timedelta(hours=sekarang.hour), 48)
     for gd in gedung_meter(db):
